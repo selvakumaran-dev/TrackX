@@ -3,6 +3,7 @@
  * Handles separate admin/driver token storage
  */
 
+import { config } from '../config/env';
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 // Extend AxiosRequestConfig to include _retry
@@ -79,14 +80,8 @@ function clearTokensAndRedirect(): void {
     }
 }
 
-// In development, use Vite proxy (just /api)
-// In production, use the full URL
-const API_BASE_URL = import.meta.env.DEV
-    ? ''
-    : (import.meta.env.VITE_API_URL || '');
-
 const api = axios.create({
-    baseURL: `${API_BASE_URL}/api`,
+    baseURL: `${config.apiUrl}/api`,
     timeout: 15000,
     headers: {
         'Content-Type': 'application/json',
@@ -121,7 +116,7 @@ api.interceptors.response.use(
                     throw new Error('No refresh token');
                 }
 
-                const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
+                const response = await axios.post(`${config.apiUrl}/api/auth/refresh`, {
                     refreshToken,
                 });
 

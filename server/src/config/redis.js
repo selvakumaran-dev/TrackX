@@ -8,6 +8,7 @@
  */
 
 import Redis from 'ioredis';
+import { config } from './env.js';
 
 let redisClient = null;
 let useMemoryFallback = false;
@@ -20,15 +21,15 @@ const memoryCache = new Map();
  * @returns {Promise<Redis|null>} Redis client instance
  */
 export async function connectRedis() {
-    // Skip Redis in development if not available
-    if (process.env.SKIP_REDIS === 'true') {
+    // Skip Redis if configured or no URL provided
+    if (config.redis.skip || !config.redis.url) {
         console.log('⚠️  Redis skipped - using in-memory cache');
         useMemoryFallback = true;
         return null;
     }
 
     try {
-        redisClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+        redisClient = new Redis(config.redis.url, {
             maxRetriesPerRequest: 1,
             retryStrategy: (times) => {
                 if (times > 2) {
@@ -40,6 +41,8 @@ export async function connectRedis() {
             },
             lazyConnect: true,
             enableOfflineQueue: false,
+            // TLS support for Upstash and other cloud Redis
+            tls: config.redis.url.startsWith('rediss://') ? {} : undefined,
         });
 
         redisClient.on('error', () => {

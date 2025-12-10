@@ -3,15 +3,10 @@
  * CORS Configuration
  * ============================================
  * Cross-Origin Resource Sharing settings
- * for production and development environments
+ * Uses centralized environment configuration
  */
 
-const allowedOrigins = [
-    'http://localhost:5173',      // Vite dev server
-    'http://localhost:3000',      // Alternative dev port
-    'http://127.0.0.1:5173',
-    process.env.CORS_ORIGIN,      // Production origin
-].filter(Boolean);
+import { config } from './env.js';
 
 export const corsOptions = {
     origin: function (origin, callback) {
@@ -20,9 +15,9 @@ export const corsOptions = {
             return callback(null, true);
         }
 
-        if (allowedOrigins.includes(origin)) {
+        if (config.cors.allowedOrigins.includes(origin)) {
             callback(null, true);
-        } else if (process.env.NODE_ENV === 'development') {
+        } else if (config.isDev) {
             // In development, allow all origins
             callback(null, true);
         } else {

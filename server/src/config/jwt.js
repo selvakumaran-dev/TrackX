@@ -3,18 +3,13 @@
  * JWT Configuration
  * ============================================
  * JSON Web Token settings for authentication
+ * Uses centralized environment configuration
  */
 
-export const jwtConfig = {
-    accessToken: {
-        secret: process.env.JWT_ACCESS_SECRET || 'trackx-dev-access-secret-key-32chars',
-        expiresIn: process.env.JWT_ACCESS_EXPIRY || '15m',
-    },
-    refreshToken: {
-        secret: process.env.JWT_REFRESH_SECRET || 'trackx-dev-refresh-secret-key-32chars',
-        expiresIn: process.env.JWT_REFRESH_EXPIRY || '7d',
-    },
-};
+import { config } from './env.js';
+
+// Re-export JWT config from centralized config
+export const jwtConfig = config.jwt;
 
 /**
  * Parse JWT expiry string to seconds
