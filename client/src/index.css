@@ -1,0 +1,476 @@
+/**
+ * TrackX - Premium Design System
+ * Clean, Professional, Enterprise-Grade
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   CSS Variables - Premium Color Palette
+   ============================================ */
+:root {
+  --primary: 99, 102, 241;
+  --secondary: 16, 185, 129;
+  --accent: 245, 158, 11;
+  --dark-50: 248, 250, 252;
+  --dark-100: 241, 245, 249;
+  --dark-200: 226, 232, 240;
+  --dark-300: 148, 163, 184;
+  --dark-400: 100, 116, 139;
+  --dark-500: 71, 85, 105;
+  --dark-600: 51, 65, 85;
+  --dark-700: 30, 41, 59;
+  --dark-800: 15, 23, 42;
+  --dark-900: 8, 12, 24;
+  --dark-950: 3, 7, 18;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(180deg, rgb(var(--dark-900)) 0%, rgb(var(--dark-950)) 100%);
+  color: rgb(var(--dark-100));
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   Typography
+   ============================================ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================
+   Scrollbar
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--dark-500), 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--dark-400), 0.7);
+}
+
+/* ============================================
+   Component Styles
+   ============================================ */
+@layer components {
+
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-400 via-primary-500 to-secondary-400;
+  }
+
+  /* Glass Effect Cards */
+  .glass-card {
+    @apply bg-dark-800/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-dark {
+    @apply bg-dark-900/80 backdrop-blur-xl;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-dark-800/80 border border-dark-700/50 rounded-2xl p-6 transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply card hover:border-primary-500/30 hover:bg-dark-800 cursor-pointer;
+    @apply hover:shadow-lg hover:shadow-primary-500/5;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold;
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white;
+    @apply hover:from-primary-600 hover:to-primary-700;
+    @apply shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30;
+    @apply transition-all duration-300 active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold;
+    @apply bg-gradient-to-r from-secondary-500 to-secondary-600 text-white;
+    @apply hover:from-secondary-600 hover:to-secondary-700;
+    @apply shadow-lg shadow-secondary-500/25 hover:shadow-xl hover:shadow-secondary-500/30;
+    @apply transition-all duration-300 active:scale-[0.98];
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold;
+    @apply border-2 border-dark-600 text-dark-200;
+    @apply hover:border-primary-500 hover:text-primary-400 hover:bg-primary-500/10;
+    @apply transition-all duration-300;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold;
+    @apply text-dark-300 hover:text-white hover:bg-white/5;
+    @apply transition-all duration-300;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full px-4 py-3 rounded-xl;
+    @apply bg-dark-800 border border-dark-600;
+    @apply text-white placeholder-dark-400;
+    @apply focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20;
+    @apply transition-all duration-200;
+  }
+
+  .input-label {
+    @apply block text-sm font-medium text-dark-300 mb-2;
+  }
+
+  /* Status Badges */
+  .status-online {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium;
+    @apply bg-secondary-500/15 text-secondary-400 border border-secondary-500/20;
+  }
+
+  .status-offline {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium;
+    @apply bg-dark-700 text-dark-400 border border-dark-600;
+  }
+
+  /* Spinner */
+  .spinner {
+    @apply w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin;
+  }
+}
+
+/* ============================================
+   Leaflet Map Customizations
+   ============================================ */
+.leaflet-container {
+  background: rgb(var(--dark-900)) !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.leaflet-tile-pane {
+  filter: saturate(0.8) brightness(0.85);
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(var(--dark-800), 0.95) !important;
+  color: rgb(var(--dark-200)) !important;
+  border: none !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 16px !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgba(var(--dark-700), 0.95) !important;
+  color: white !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: white !important;
+  color: #1f2937 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.leaflet-popup-tip {
+  background: white !important;
+}
+
+.leaflet-popup-close-button {
+  color: rgb(var(--dark-400)) !important;
+}
+
+/* Custom Bus Marker */
+.bus-marker {
+  @apply w-10 h-10 rounded-xl flex items-center justify-center text-white;
+  background: linear-gradient(135deg, rgb(var(--primary)), rgb(99, 102, 241));
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  animation: pulse-marker 2s ease-in-out infinite;
+}
+
+.bus-marker-offline {
+  background: rgb(var(--dark-600));
+  box-shadow: none;
+  animation: none;
+}
+
+@keyframes pulse-marker {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out forwards;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+.shadow-glow {
+  box-shadow: 0 0 40px rgba(var(--primary), 0.15);
+}
+
+.border-gradient {
+  border: 1px solid transparent;
+  background: linear-gradient(rgb(var(--dark-800)), rgb(var(--dark-800))) padding-box,
+    linear-gradient(135deg, rgba(var(--primary), 0.3), rgba(var(--secondary), 0.3)) border-box;
+}
+
+/* ============================================
+   Mobile-First Responsive Design
+   ============================================ */
+
+/* Touch-friendly tap targets */
+@media (max-width: 768px) {
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline,
+  .btn-ghost {
+    @apply min-h-[48px] text-base;
+  }
+
+  .input {
+    @apply min-h-[48px] text-base;
+  }
+
+  .card {
+    @apply p-4 rounded-xl;
+  }
+
+  /* Reduce padding on mobile */
+  .mobile-compact {
+    @apply p-3;
+  }
+}
+
+/* Tablet Styles */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-grid-2 {
+    @apply grid-cols-2;
+  }
+
+  .tablet-hidden {
+    @apply hidden;
+  }
+}
+
+/* Desktop Styles */
+@media (min-width: 1024px) {
+  .desktop-sidebar {
+    @apply w-64;
+  }
+}
+
+/* Safe Area for PWA (notch support) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+}
+
+/* PWA Standalone Mode Styles */
+@media all and (display-mode: standalone) {
+  body {
+    /* Prevent rubber-banding on iOS */
+    overscroll-behavior-y: contain;
+  }
+
+  /* Bottom navigation safe area */
+  .bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ============================================
+   Responsive Breakpoint Utilities
+   ============================================ */
+@layer utilities {
+
+  /* Hide on mobile, show on tablet+ */
+  .show-tablet {
+    @apply hidden md:block;
+  }
+
+  /* Show on mobile, hide on tablet+ */
+  .hide-tablet {
+    @apply block md:hidden;
+  }
+
+  /* Hide on mobile/tablet, show on desktop */
+  .show-desktop {
+    @apply hidden lg:block;
+  }
+
+  /* Responsive text */
+  .text-responsive-sm {
+    @apply text-xs sm:text-sm;
+  }
+
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+
+  .text-responsive-lg {
+    @apply text-base sm:text-lg md:text-xl;
+  }
+
+  .text-responsive-xl {
+    @apply text-lg sm:text-xl md:text-2xl lg:text-3xl;
+  }
+
+  /* Responsive spacing */
+  .p-responsive {
+    @apply p-3 sm:p-4 md:p-6;
+  }
+
+  .px-responsive {
+    @apply px-3 sm:px-4 md:px-6;
+  }
+
+  .gap-responsive {
+    @apply gap-2 sm:gap-3 md:gap-4;
+  }
+
+  /* Full height accounting for mobile browser chrome */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh;
+  }
+}
+
+/* ============================================
+   Touch Device Optimizations
+   ============================================ */
+@media (hover: none) and (pointer: coarse) {
+
+  /* Remove hover effects on touch devices */
+  .card-hover:hover {
+    @apply border-dark-700/50 bg-dark-800/80;
+  }
+
+  /* Larger touch targets */
+  button,
+  [role="button"],
+  a {
+    min-height: 44px;
+  }
+
+  /* Prevent text selection on buttons */
+  button {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

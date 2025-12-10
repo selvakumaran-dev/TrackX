@@ -1,0 +1,70 @@
+# ============================================
+# TrackX - Render Blueprint Configuration
+# ============================================
+# Deploy both client and server as separate services
+# with MongoDB Atlas and Redis (Render or Upstash)
+
+services:
+  # ============================================
+  # Backend API Service (Web Service)
+  # ============================================
+  - type: web
+    name: trackx-api
+    runtime: node
+    region: oregon # or singapore for lower latency to India
+    plan: starter # $7/month, can start with free tier
+    rootDir: server
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        sync: false # Set manually in Render dashboard
+      - key: REDIS_URL
+        sync: false # Set manually or use Render Redis
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false # Set to your frontend URL
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 1
+
+  # ============================================
+  # Frontend Static Site
+  # ============================================
+  - type: web
+    name: trackx-client
+    runtime: static
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: true
+    envVars:
+      - key: VITE_API_URL
+        sync: false # Set to your backend URL in dashboard
+      - key: VITE_SOCKET_URL
+        sync: false
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
+    routes:
+      # SPA fallback - send all routes to index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html

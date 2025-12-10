@@ -1,0 +1,137 @@
+// ============================================
+// TrackX Database Schema - Prisma ORM (MongoDB)
+// Enterprise-grade bus tracking system
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ADMIN MODEL
+// System administrators with full access
+// ============================================
+model Admin {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  email       String    @unique
+  password    String
+  name        String
+  role        String    @default("ADMIN") // SUPER_ADMIN, ADMIN
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("admins")
+}
+
+// ============================================
+// DRIVER MODEL
+// Bus drivers with tracking capabilities
+// ============================================
+model Driver {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  email       String    @unique
+  password    String
+  name        String
+  phone       String?
+  photoUrl    String?
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  busId   String?  @unique @db.ObjectId
+  bus     Bus?     @relation(fields: [busId], references: [id])
+  gpsLogs GpsLog[]
+
+  @@map("drivers")
+}
+
+// ============================================
+// BUS MODEL
+// Vehicle information and tracking config
+// ============================================
+model Bus {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  busNumber   String   @unique
+  busName     String
+  gpsDeviceId String?
+  apiKey      String?  @unique
+  apiKeyHash  String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  driver  Driver?
+  gpsLogs GpsLog[]
+  stops   BusStop[]
+
+  @@map("buses")
+}
+
+// ============================================
+// BUS STOP MODEL
+// Route stops for each bus
+// ============================================
+model BusStop {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  latitude  Float
+  longitude Float
+  order     Int      // Order in the route (1, 2, 3...)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  busId String @db.ObjectId
+  bus   Bus    @relation(fields: [busId], references: [id], onDelete: Cascade)
+
+  @@index([busId, order])
+  @@map("bus_stops")
+}
+
+// ============================================
+// GPS LOG MODEL
+// Historical location data for buses
+// ============================================
+model GpsLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  latitude  Float
+  longitude Float
+  speed     Float?
+  heading   Float?
+  accuracy  Float?
+  altitude  Float?
+  timestamp DateTime @default(now())
+  source    String   @default("DEVICE") // DEVICE, DRIVER_APP
+
+  busId    String  @db.ObjectId
+  bus      Bus     @relation(fields: [busId], references: [id], onDelete: Cascade)
+  driverId String? @db.ObjectId
+  driver   Driver? @relation(fields: [driverId], references: [id])
+
+  @@index([busId, timestamp(sort: Desc)])
+  @@map("gps_logs")
+}
+
+// ============================================
+// REFRESH TOKEN MODEL
+// JWT refresh token storage for revocation
+// ============================================
+model RefreshToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  token     String   @unique
+  userId    String
+  userType  String   // ADMIN, DRIVER
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, userType])
+  @@map("refresh_tokens")
+}
