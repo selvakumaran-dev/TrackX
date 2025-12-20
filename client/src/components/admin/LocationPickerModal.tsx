@@ -6,13 +6,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { X, MapPin, Check, Search, Loader2, AlertCircle, Navigation } from 'lucide-react';
-import L from 'leaflet';
+import L, { LatLngExpression } from 'leaflet';
 
 // Map tile
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
 // Tamil Nadu center
-const TN_CENTER = [11.1271, 78.6569];
+const TN_CENTER: [number, number] = [11.1271, 78.6569];
 
 // Marker icon
 const markerIcon = L.divIcon({
@@ -37,7 +37,40 @@ const markerIcon = L.divIcon({
     iconAnchor: [20, 40],
 });
 
-function MapClickHandler({ onLocationSelect }) {
+// Type definitions
+interface SearchResult {
+    lat: number;
+    lng: number;
+    name: string;
+    type: string;
+    shortName: string;
+}
+
+interface MapClickHandlerProps {
+    onLocationSelect: (lat: number, lng: number) => void;
+}
+
+interface FlyToLocationProps {
+    position: [number, number] | null;
+}
+
+interface LocationPickerModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSelect: (lat: number, lng: number) => void;
+    initialLat: number | null;
+    initialLng: number | null;
+}
+
+interface NominatimResult {
+    lat: string;
+    lon: string;
+    display_name: string;
+    type: string;
+    name?: string;
+}
+
+function MapClickHandler({ onLocationSelect }: MapClickHandlerProps) {
     useMapEvents({
         click: (e) => {
             onLocationSelect(e.latlng.lat, e.latlng.lng);
@@ -46,7 +79,7 @@ function MapClickHandler({ onLocationSelect }) {
     return null;
 }
 
-function FlyToLocation({ position }) {
+function FlyToLocation({ position }: FlyToLocationProps) {
     const map = useMap();
     useEffect(() => {
         if (position) {
@@ -56,12 +89,12 @@ function FlyToLocation({ position }) {
     return null;
 }
 
-function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng }) {
-    const [selectedLat, setSelectedLat] = useState(initialLat || null);
-    const [selectedLng, setSelectedLng] = useState(initialLng || null);
+function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng }: LocationPickerModalProps) {
+    const [selectedLat, setSelectedLat] = useState<number | null>(initialLat || null);
+    const [selectedLng, setSelectedLng] = useState<number | null>(initialLng || null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searching, setSearching] = useState(false);
-    const [searchResults, setSearchResults] = useState([]);
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [showResults, setShowResults] = useState(false);
     const [searchError, setSearchError] = useState('');
     const [gettingLocation, setGettingLocation] = useState(false);
@@ -76,7 +109,7 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
         }
     }, [isOpen, initialLat, initialLng]);
 
-    const handleLocationSelect = (lat, lng) => {
+    const handleLocationSelect = (lat: number, lng: number) => {
         setSelectedLat(lat);
         setSelectedLng(lng);
         setShowResults(false);
@@ -125,10 +158,10 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1`
             );
-            const data = await response.json();
+            const data: NominatimResult[] = await response.json();
 
             if (data && data.length > 0) {
-                setSearchResults(data.map(item => ({
+                setSearchResults(data.map((item: NominatimResult) => ({
                     lat: parseFloat(item.lat),
                     lng: parseFloat(item.lon),
                     name: item.display_name,
@@ -141,9 +174,9 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
                 const response2 = await fetch(
                     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=8&addressdetails=1`
                 );
-                const data2 = await response2.json();
+                const data2: NominatimResult[] = await response2.json();
                 if (data2 && data2.length > 0) {
-                    setSearchResults(data2.map(item => ({
+                    setSearchResults(data2.map((item: NominatimResult) => ({
                         lat: parseFloat(item.lat),
                         lng: parseFloat(item.lon),
                         name: item.display_name,
@@ -162,7 +195,7 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
         setSearching(false);
     };
 
-    const selectSearchResult = (result) => {
+    const selectSearchResult = (result: SearchResult) => {
         setSelectedLat(result.lat);
         setSelectedLng(result.lng);
         setShowResults(false);

@@ -2,14 +2,42 @@
  * Admin Dashboard - Clean & Professional
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bus, Users, Wifi, WifiOff, MapPin, ArrowRight, RefreshCw, Activity } from 'lucide-react';
+import { Bus, Users, Wifi, WifiOff, MapPin, ArrowRight, RefreshCw, Activity, LucideIcon } from 'lucide-react';
 import api from '../../services/api';
 import socketService from '../../services/socket';
+import type { BusLocation } from '../../types';
 
-function StatCard({ title, value, icon: Icon, color }) {
+// Type definitions
+interface Stats {
+    totalBuses: number;
+    totalDrivers: number;
+    activeDrivers: number;
+    onlineBuses: number;
+    offlineBuses: number;
+}
+
+interface BusData {
+    id: string;
+    busNumber: string;
+    busName: string;
+    isOnline?: boolean;
+    driver?: string;
+    lastUpdate?: string;
+    lat?: number;
+    lon?: number;
+}
+
+interface StatCardProps {
+    title: string;
+    value: number;
+    icon: LucideIcon;
+    color: 'primary' | 'secondary' | 'accent' | 'gray';
+}
+
+function StatCard({ title, value, icon: Icon, color }: StatCardProps) {
     const colors = {
         primary: 'from-primary-500 to-primary-600',
         secondary: 'from-secondary-500 to-secondary-600',
@@ -33,8 +61,8 @@ function StatCard({ title, value, icon: Icon, color }) {
 }
 
 function AdminDashboard() {
-    const [stats, setStats] = useState({ totalBuses: 0, totalDrivers: 0, activeDrivers: 0, onlineBuses: 0, offlineBuses: 0 });
-    const [buses, setBuses] = useState([]);
+    const [stats, setStats] = useState<Stats>({ totalBuses: 0, totalDrivers: 0, activeDrivers: 0, onlineBuses: 0, offlineBuses: 0 });
+    const [buses, setBuses] = useState<BusData[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -55,20 +83,57 @@ function AdminDashboard() {
     useEffect(() => {
         fetchData();
         socketService.connect();
-        socketService.joinAdminDashboard(localStorage.getItem('accessToken'));
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            socketService.joinAdminDashboard(token);
+        }
 
-        const unsub = socketService.onBusUpdate((data) => {
-            setBuses(prev => {
-                const idx = prev.findIndex(b => b.busNumber === data.busNumber);
+        const unsub = socketService.onBusUpdate((data: BusLocation) => {
+            // Update the last update time for this bus
+            lastUpdateTimesRef.current.set(data.busNumber, Date.now());
+
+            setBuses((prev: BusData[]) => {
+                const idx = prev.findIndex((b: BusData) => b.busNumber === data.busNumber);
                 if (idx >= 0) {
                     const updated = [...prev];
-                    updated[idx] = { ...updated[idx], ...data, isOnline: true, lastUpdate: data.updatedAt };
+                    updated[idx] = {
+                        ...updated[idx],
+                        busNumber: data.busNumber,
+                        busName: data.busName,
+                        isOnline: true, // Always true when receiving fresh socket data
+                        lastUpdate: data.updatedAt,
+                        lat: data.lat ?? undefined,
+                        lon: data.lon ?? undefined,
+                        driver: data.driver
+                    };
                     return updated;
                 }
                 return prev;
             });
         });
         return () => unsub();
+    }, []);
+
+    // Track last socket update time per bus
+    const lastUpdateTimesRef = useRef<Map<string, number>>(new Map());
+
+    // Smart offline detection - checks every 5 seconds
+    const OFFLINE_THRESHOLD_MS = 15000; // 15 seconds
+    useEffect(() => {
+        const checkOffline = () => {
+            const now = Date.now();
+            setBuses(prev => prev.map(bus => {
+                if (!bus.isOnline) return bus;
+                const lastUpdate = lastUpdateTimesRef.current.get(bus.busNumber);
+                if (lastUpdate && now - lastUpdate > OFFLINE_THRESHOLD_MS) {
+                    return { ...bus, isOnline: false };
+                }
+                return bus;
+            }));
+        };
+
+        const interval = setInterval(checkOffline, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     if (loading) {

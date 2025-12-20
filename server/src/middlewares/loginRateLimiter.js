@@ -10,8 +10,8 @@ const loginAttempts = new Map();
 
 // Configuration
 const MAX_LOGIN_ATTEMPTS = 5; // Max attempts per window
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const LOCKOUT_MS = 12 * 60 * 1000; // 12 minutes lockout after max attempts
+const WINDOW_MS = 10 * 60 * 1000; // 10 minutes window
+const LOCKOUT_MS = 10 * 60 * 1000; // 10 minutes lockout after 5 wrong attempts
 
 /**
  * Login rate limiter - stricter than general rate limiter

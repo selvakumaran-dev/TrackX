@@ -99,9 +99,13 @@ class SocketService {
      */
     onLocationUpdate(callback: LocationCallback): () => void {
         if (!this.socket) this.connect();
-        this.socket?.on('location-update', callback);
+        const wrappedCallback = (data: BusLocation) => {
+            console.log('📍 Socket received location-update:', data.busNumber, data.lat, data.lon, data.isOnline);
+            callback(data);
+        };
+        this.socket?.on('location-update', wrappedCallback);
         return () => {
-            this.socket?.off('location-update', callback);
+            this.socket?.off('location-update', wrappedCallback);
         };
     }
 

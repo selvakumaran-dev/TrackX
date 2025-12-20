@@ -8,12 +8,35 @@ import { X, Plus, Trash2, GripVertical, MapPin, Save, Map } from 'lucide-react';
 import api from '../../services/api';
 import LocationPickerModal from './LocationPickerModal';
 
-function BusStopsModal({ isOpen, onClose, bus, onSaved }) {
-    const [stops, setStops] = useState([]);
+// Type definitions
+interface BusStop {
+    id: string;
+    name: string;
+    latitude: number | string;
+    longitude: number | string;
+    order: number;
+}
+
+interface BusData {
+    id: string;
+    busNumber: string;
+    busName: string;
+    stops?: BusStop[];
+}
+
+interface BusStopsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    bus: BusData | null;
+    onSaved: () => void;
+}
+
+function BusStopsModal({ isOpen, onClose, bus, onSaved }: BusStopsModalProps) {
+    const [stops, setStops] = useState<BusStop[]>([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [showLocationPicker, setShowLocationPicker] = useState(false);
-    const [editingStopIndex, setEditingStopIndex] = useState(null);
+    const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
 
     useEffect(() => {
         if (bus?.stops) {
@@ -43,27 +66,27 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }) {
         setShowLocationPicker(true);
     };
 
-    const removeStop = (index) => {
+    const removeStop = (index: number) => {
         const newStops = stops.filter((_, i) => i !== index);
         // Reorder
         setStops(newStops.map((s, i) => ({ ...s, order: i + 1 })));
     };
 
-    const updateStop = (index, field, value) => {
+    const updateStop = (index: number, field: keyof BusStop, value: string | number) => {
         const newStops = [...stops];
         newStops[index] = {
             ...newStops[index],
-            [field]: field === 'latitude' || field === 'longitude' ? parseFloat(value) || '' : value,
+            [field]: field === 'latitude' || field === 'longitude' ? parseFloat(String(value)) || '' : value,
         };
         setStops(newStops);
     };
 
-    const openLocationPicker = (index) => {
+    const openLocationPicker = (index: number) => {
         setEditingStopIndex(index);
         setShowLocationPicker(true);
     };
 
-    const handleLocationSelect = (lat, lng) => {
+    const handleLocationSelect = (lat: number, lng: number) => {
         if (editingStopIndex !== null) {
             const newStops = [...stops];
             newStops[editingStopIndex] = {
@@ -96,16 +119,17 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }) {
         try {
             const stopsData = stops.map((s, i) => ({
                 name: s.name,
-                latitude: parseFloat(s.latitude),
-                longitude: parseFloat(s.longitude),
+                latitude: parseFloat(String(s.latitude)),
+                longitude: parseFloat(String(s.longitude)),
                 order: i + 1,
             }));
 
-            await api.put(`/admin/buses/${bus.id}/stops`, { stops: stopsData });
+            await api.put(`/admin/buses/${bus?.id}/stops`, { stops: stopsData });
             onSaved();
             onClose();
-        } catch (err) {
-            setError(err.response?.data?.error || 'Failed to save stops');
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            setError(error.response?.data?.error || 'Failed to save stops');
         } finally {
             setSaving(false);
         }
@@ -218,7 +242,7 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }) {
                                                     {stop.latitude && stop.longitude && (
                                                         <div className="flex items-center gap-2 text-xs text-green-400">
                                                             <MapPin className="w-3 h-3" />
-                                                            Location set: {stop.latitude.toFixed(4)}, {stop.longitude.toFixed(4)}
+                                                            Location set: {Number(stop.latitude).toFixed(4)}, {Number(stop.longitude).toFixed(4)}
                                                         </div>
                                                     )}
                                                 </div>
@@ -267,8 +291,8 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }) {
                     setEditingStopIndex(null);
                 }}
                 onSelect={handleLocationSelect}
-                initialLat={editingStopIndex !== null ? stops[editingStopIndex]?.latitude : null}
-                initialLng={editingStopIndex !== null ? stops[editingStopIndex]?.longitude : null}
+                initialLat={editingStopIndex !== null && stops[editingStopIndex]?.latitude ? Number(stops[editingStopIndex].latitude) : null}
+                initialLng={editingStopIndex !== null && stops[editingStopIndex]?.longitude ? Number(stops[editingStopIndex].longitude) : null}
             />
         </>
     );

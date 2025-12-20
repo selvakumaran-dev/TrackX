@@ -154,8 +154,28 @@ const TrackingPage: React.FC = () => {
     const [reachedStops, setReachedStops] = useState<Set<string>>(new Set());
     const [journeyStops, setJourneyStops] = useState<StopWithStatus[]>([]);
 
+    // Track last socket update time using ref (doesn't trigger re-renders)
+    const lastSocketUpdateRef = useRef<number>(Date.now());
+
+    // Smart offline detection - only marks offline, never overrides socket updates
+    const OFFLINE_THRESHOLD_MS = 15000; // 15 seconds
+    useEffect(() => {
+        if (!bus || !bus.isOnline) return;
+
+        const checkOffline = () => {
+            const timeSinceLastUpdate = Date.now() - lastSocketUpdateRef.current;
+            if (timeSinceLastUpdate > OFFLINE_THRESHOLD_MS) {
+                setBus(prev => prev ? { ...prev, isOnline: false } : prev);
+            }
+        };
+
+        // Check every 3 seconds
+        const interval = setInterval(checkOffline, 3000);
+        return () => clearInterval(interval);
+    }, [bus?.isOnline]);
+
     // Handle panel drag
-    const handleDrag = (_: any, info: any) => {
+    const handleDrag = (_: MouseEvent | TouchEvent | PointerEvent, info: { offset: { y: number } }) => {
         const y = info.offset.y;
         if (y < -50) setPanelHeight('full');
         else if (y > 100) setPanelHeight('mini');
@@ -198,19 +218,24 @@ const TrackingPage: React.FC = () => {
             return;
         }
 
+        // Pre-calculate all distances once to avoid redundant calculations
+        const stopsWithDistance = sortedStops.map(stop => ({
+            ...stop,
+            dist: calcDist(bus.lat!, bus.lon!, stop.latitude, stop.longitude)
+        }));
+
         const newReached = new Set(reachedStops);
 
         // Find which stop bus is closest to
         let closestStopIndex = 0;
         let minDist = Infinity;
-        sortedStops.forEach((stop, idx) => {
-            const dist = calcDist(bus.lat!, bus.lon!, stop.latitude, stop.longitude);
-            if (dist < minDist) {
-                minDist = dist;
+        stopsWithDistance.forEach((stop, idx) => {
+            if (stop.dist < minDist) {
+                minDist = stop.dist;
                 closestStopIndex = idx;
             }
             // If bus is very close to a stop, mark it as reached
-            if (dist < STOP_REACHED_THRESHOLD) {
+            if (stop.dist < STOP_REACHED_THRESHOLD) {
                 newReached.add(stop.id);
             }
         });
@@ -225,11 +250,10 @@ const TrackingPage: React.FC = () => {
             setReachedStops(newReached);
         }
 
-        // Build journey stops with status
-        const journey: StopWithStatus[] = sortedStops.map((stop, idx) => {
-            const dist = calcDist(bus.lat!, bus.lon!, stop.latitude, stop.longitude);
+        // Build journey stops with status - reuse pre-calculated distances
+        const journey: StopWithStatus[] = stopsWithDistance.map((stop, idx) => {
             const isReached = newReached.has(stop.id);
-            const isCurrent = idx === closestStopIndex && dist < STOP_REACHED_THRESHOLD * 3;
+            const isCurrent = idx === closestStopIndex && stop.dist < STOP_REACHED_THRESHOLD * 3;
             const isSelected = myStop?.id === stop.id;
 
             let status: StopWithStatus['status'];
@@ -239,10 +263,15 @@ const TrackingPage: React.FC = () => {
             else status = 'upcoming';
 
             return {
-                ...stop,
+                id: stop.id,
+                name: stop.name,
+                latitude: stop.latitude,
+                longitude: stop.longitude,
+                order: stop.order,
+                busId: stop.busId,
                 status,
-                distanceFromBus: dist,
-                eta: calcETA(dist, bus.speed || 0),
+                distanceFromBus: stop.dist,
+                eta: calcETA(stop.dist, bus.speed || 0),
             };
         });
 
@@ -286,21 +315,39 @@ const TrackingPage: React.FC = () => {
         try {
             const r = await api.get(`/public/bus/${num}`);
             setBus(r.data.data);
-        } catch (e: any) {
-            setError(e.response?.data?.error || 'Bus not found');
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { error?: string } } };
+            setError(err.response?.data?.error || 'Bus not found');
             setBus(null);
         }
         setLoading(false);
     }, []);
 
-    // Socket
+    // Socket connection
     useEffect(() => {
         if (!selectedBus) return;
         fetchBus(selectedBus);
         socketService.connect();
         socketService.subscribeToBus(selectedBus);
-        const unsub = socketService.onLocationUpdate((d) => { if (d.busNumber === selectedBus) setBus(p => p ? { ...p, ...d } : d); });
-        return () => { unsub(); socketService.unsubscribeFromBus(selectedBus); };
+        // When receiving socket updates, update ref timer and set isOnline: true
+        const unsub = socketService.onLocationUpdate((d) => {
+            // Case-insensitive comparison (server normalizes to uppercase)
+            if (d.busNumber?.toUpperCase() === selectedBus.toUpperCase()) {
+                // Only process if the update has actual GPS coordinates
+                if (d.lat && d.lon) {
+                    lastSocketUpdateRef.current = Date.now(); // Reset offline timer
+                    setBus(p => p ? { ...p, ...d, isOnline: true } : { ...d, isOnline: true });
+                } else if (d.isOnline === false) {
+                    // Server explicitly says bus is offline
+                    setBus(p => p ? { ...p, ...d } : d);
+                }
+            }
+        });
+
+        return () => {
+            unsub();
+            socketService.unsubscribeFromBus(selectedBus);
+        };
     }, [selectedBus, fetchBus]);
 
     const selectBus = (num: string) => { setSelectedBus(num); setQuery(num); setShowSearch(false); setReachedStops(new Set()); };

@@ -106,7 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     localStorage.removeItem('accessToken');
                     setUser(null);
                 }
-            } catch (error: any) {
+            } catch (error: unknown) {
                 // Token invalid
                 localStorage.removeItem(keys.token);
                 localStorage.removeItem(keys.refresh);

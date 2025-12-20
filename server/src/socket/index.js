@@ -93,6 +93,7 @@ export function initializeSocket(httpServer) {
             // Track room stats
             const roomSize = io.sockets.adapter.rooms.get(roomName)?.size || 0;
             stats.roomStats.set(roomName, roomSize);
+            console.log(`👁️ Client ${socket.id} joined ${roomName} (${roomSize} in room)`);
 
             // Send initial location data
             try {
@@ -215,16 +216,16 @@ export function getIO() {
 
 /**
  * Broadcast location update to bus room - Optimized
- * Uses volatile emit for performance (ok to miss occasional updates)
+ * Uses regular emit for guaranteed delivery (not volatile)
  */
 export function broadcastBusLocation(busNumber, locationData) {
     if (!io) return;
 
     const roomName = `bus-${busNumber}`;
 
-    // Use volatile for location updates (ok to skip under load)
-    io.to(roomName).volatile.emit('location-update', locationData);
-    io.to('admin-dashboard').volatile.emit('bus-update', locationData);
+    // Use regular emit for reliable delivery
+    io.to(roomName).emit('location-update', locationData);
+    io.to('admin-dashboard').emit('bus-update', locationData);
 }
 
 /**

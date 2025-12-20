@@ -113,9 +113,12 @@ export async function getBusByNumber(busNumber) {
  * @param {object} data - Bus data
  */
 export async function createBus(data) {
+    // Normalize bus number to uppercase for consistency
+    const normalizedBusNumber = data.busNumber.toUpperCase();
+
     // Check if bus number already exists
     const existing = await prisma.bus.findUnique({
-        where: { busNumber: data.busNumber },
+        where: { busNumber: normalizedBusNumber },
     });
 
     if (existing) {
@@ -139,7 +142,7 @@ export async function createBus(data) {
 
     const bus = await prisma.bus.create({
         data: {
-            busNumber: data.busNumber,
+            busNumber: normalizedBusNumber,
             busName: data.busName,
             gpsDeviceId: data.gpsDeviceId || null,
             isActive: data.isActive ?? true,
@@ -177,9 +180,10 @@ export async function updateBus(id, data) {
     }
 
     // Check if new bus number conflicts
-    if (data.busNumber && data.busNumber !== existing.busNumber) {
+    if (data.busNumber && data.busNumber.toUpperCase() !== existing.busNumber.toUpperCase()) {
+        const normalizedNewBusNumber = data.busNumber.toUpperCase();
         const conflict = await prisma.bus.findUnique({
-            where: { busNumber: data.busNumber },
+            where: { busNumber: normalizedNewBusNumber },
         });
         if (conflict) {
             throw new ApiError(409, 'Bus number already exists');
@@ -223,7 +227,7 @@ export async function updateBus(id, data) {
     const bus = await prisma.bus.update({
         where: { id },
         data: {
-            ...(data.busNumber && { busNumber: data.busNumber }),
+            ...(data.busNumber && { busNumber: data.busNumber.toUpperCase() }),
             ...(data.busName && { busName: data.busName }),
             ...(data.gpsDeviceId !== undefined && { gpsDeviceId: data.gpsDeviceId }),
             ...(data.isActive !== undefined && { isActive: data.isActive }),

@@ -60,9 +60,10 @@ const DriverLogin: React.FC = () => {
                 if (result.error?.includes('Too many') || result.error?.includes('locked')) {
                     try {
                         await api.post('/auth/login', { email, password, userType: 'DRIVER' });
-                    } catch (apiError: any) {
-                        if (apiError.response?.status === 429) {
-                            const retryAfter = apiError.response?.data?.retryAfter;
+                    } catch (apiError: unknown) {
+                        const err = apiError as { response?: { status?: number; data?: { retryAfter?: number } } };
+                        if (err.response?.status === 429) {
+                            const retryAfter = err.response?.data?.retryAfter;
                             if (retryAfter) {
                                 setIsLocked(true);
                                 setLockoutSeconds(retryAfter);
@@ -72,7 +73,8 @@ const DriverLogin: React.FC = () => {
                 }
                 setError(result.error || 'Login failed');
             }
-        } catch (err: any) {
+        } catch (error: unknown) {
+            const err = error as { response?: { status?: number; data?: { error?: string; retryAfter?: number } } };
             if (err.response?.status === 429) {
                 const retryAfter = err.response?.data?.retryAfter;
                 if (retryAfter) {
@@ -166,7 +168,6 @@ const DriverLogin: React.FC = () => {
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="driver@example.com"
                                 className="w-full pl-12 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 touch-input disabled:opacity-50"
                                 disabled={isLocked}
                             />
@@ -181,7 +182,6 @@ const DriverLogin: React.FC = () => {
                                 type={showPassword ? 'text' : 'password'}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
                                 className="w-full pl-12 pr-14 py-4 bg-slate-800 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 touch-input disabled:opacity-50"
                                 disabled={isLocked}
                             />
@@ -210,7 +210,7 @@ const DriverLogin: React.FC = () => {
 
                 {/* Rate Limit Info */}
                 <p className="text-center mt-6 text-xs text-slate-600">
-                    5 attempts allowed per 15 minutes
+                    5 attempts allowed per 10 minutes
                 </p>
             </div>
 

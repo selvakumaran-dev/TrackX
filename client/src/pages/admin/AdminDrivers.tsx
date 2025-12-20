@@ -23,9 +23,49 @@ import {
     Bus,
 } from 'lucide-react';
 import api from '../../services/api';
+import { apiUrl, isDev } from '../../config/env';
+
+// Type definitions
+interface BusData {
+    id: string;
+    busNumber: string;
+    busName: string;
+}
+
+interface Driver {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    photoUrl?: string;
+    isActive: boolean;
+    busId?: string;
+    bus?: BusData | null;
+    lastLoginAt?: string;
+}
+
+interface ModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+}
+
+// Helper to get full photo URL
+// In development, uploads are served from the backend server (port 3001)
+// In production, they're served from the API_URL
+const getPhotoUrl = (photoUrl: string | null | undefined): string | null => {
+    if (!photoUrl) return null;
+    // If already absolute URL, return as-is
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl;
+    // In development, use localhost:3001 for uploads (bypasses Vite proxy issues)
+    // In production, use the configured API URL
+    const baseUrl = isDev ? 'http://localhost:3001' : apiUrl;
+    return `${baseUrl}${photoUrl}`;
+};
 
 // Modal Component
-function Modal({ isOpen, onClose, title, children }) {
+function Modal({ isOpen, onClose, title, children }: ModalProps) {
     if (!isOpen) return null;
 
     return (
@@ -63,15 +103,15 @@ function Modal({ isOpen, onClose, title, children }) {
 }
 
 function AdminDrivers() {
-    const [drivers, setDrivers] = useState([]);
+    const [drivers, setDrivers] = useState<Driver[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
-    const [availableBuses, setAvailableBuses] = useState([]);
+    const [availableBuses, setAvailableBuses] = useState<BusData[]>([]);
 
     // Modal states
     const [showModal, setShowModal] = useState(false);
-    const [editingDriver, setEditingDriver] = useState(null);
+    const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -104,12 +144,12 @@ function AdminDrivers() {
     };
 
     // Fetch available buses
-    const fetchAvailableBuses = async (currentDriverId = null) => {
+    const fetchAvailableBuses = async (currentDriverId: string | null | undefined = null) => {
         try {
             const response = await api.get('/admin/buses', { params: { limit: 100 } });
             const allBuses = response.data.data || [];
             // Show buses that either have no driver, or have this driver assigned
-            const available = allBuses.filter(bus =>
+            const available = allBuses.filter((bus: BusData & { driver?: { id: string } }) =>
                 !bus.driver || bus.driver.id === currentDriverId
             );
             setAvailableBuses(available);
@@ -132,7 +172,7 @@ function AdminDrivers() {
     };
 
     // Open edit modal
-    const openEditModal = (driver) => {
+    const openEditModal = (driver: Driver) => {
         setEditingDriver(driver);
         setFormData({
             name: driver.name,
@@ -148,13 +188,13 @@ function AdminDrivers() {
     };
 
     // Handle form submit
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         setFormError('');
 
         try {
-            const data = {
+            const data: { name: string; email: string; phone: string | null; busId: string | null; password?: string } = {
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone || null,
@@ -181,22 +221,24 @@ function AdminDrivers() {
 
             setShowModal(false);
             fetchDrivers(pagination.page);
-        } catch (error) {
-            setFormError(error.response?.data?.error || 'Failed to save driver');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            setFormError(err.response?.data?.error || 'Failed to save driver');
         } finally {
             setSaving(false);
         }
     };
 
     // Delete driver
-    const handleDelete = async (driver) => {
+    const handleDelete = async (driver: Driver) => {
         if (!confirm(`Are you sure you want to delete ${driver.name}?`)) return;
 
         try {
             await api.delete(`/admin/drivers/${driver.id}`);
             fetchDrivers(pagination.page);
-        } catch (error) {
-            alert(error.response?.data?.error || 'Failed to delete driver');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            alert(err.response?.data?.error || 'Failed to delete driver');
         }
     };
 
@@ -221,7 +263,6 @@ function AdminDrivers() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search drivers..."
                     className="input pl-12"
                 />
             </div>
@@ -243,9 +284,9 @@ function AdminDrivers() {
                         >
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    {driver.photoUrl ? (
+                                    {getPhotoUrl(driver.photoUrl) ? (
                                         <img
-                                            src={driver.photoUrl}
+                                            src={getPhotoUrl(driver.photoUrl)!}
                                             alt={driver.name}
                                             className="w-12 h-12 rounded-full object-cover"
                                         />
@@ -367,7 +408,6 @@ function AdminDrivers() {
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="e.g., Rajesh Kumar"
                             className="input"
                             required
                         />
@@ -379,7 +419,6 @@ function AdminDrivers() {
                             type="email"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            placeholder="e.g., driver@trackx.com"
                             className="input"
                             required
                         />
@@ -393,7 +432,6 @@ function AdminDrivers() {
                             type="password"
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            placeholder="••••••••"
                             className="input"
                             required={!editingDriver}
                         />
@@ -405,7 +443,6 @@ function AdminDrivers() {
                             type="tel"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            placeholder="e.g., +91 98765 43210"
                             className="input"
                         />
                     </div>

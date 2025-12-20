@@ -61,9 +61,10 @@ function AdminLogin() {
                     // Try to get the lockout time from the API directly
                     try {
                         await api.post('/auth/login', { email, password, userType: 'ADMIN' });
-                    } catch (apiError: any) {
-                        if (apiError.response?.status === 429) {
-                            const retryAfter = apiError.response?.data?.retryAfter;
+                    } catch (apiError: unknown) {
+                        const err = apiError as { response?: { status?: number; data?: { retryAfter?: number } } };
+                        if (err.response?.status === 429) {
+                            const retryAfter = err.response?.data?.retryAfter;
                             if (retryAfter) {
                                 setIsLocked(true);
                                 setLockoutSeconds(retryAfter);
@@ -73,7 +74,8 @@ function AdminLogin() {
                 }
                 setError(result.error || 'Login failed');
             }
-        } catch (err: any) {
+        } catch (error: unknown) {
+            const err = error as { response?: { status?: number; data?: { error?: string; retryAfter?: number } } };
             if (err.response?.status === 429) {
                 const retryAfter = err.response?.data?.retryAfter;
                 if (retryAfter) {
@@ -164,7 +166,6 @@ function AdminLogin() {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="admin@example.com"
                                     className="input pl-10"
                                     required
                                     disabled={isLocked}
@@ -180,7 +181,6 @@ function AdminLogin() {
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
                                     className="input pl-10 pr-10"
                                     required
                                     disabled={isLocked}
@@ -220,7 +220,7 @@ function AdminLogin() {
 
                 {/* Rate Limit Info */}
                 <p className="text-center mt-4 text-xs text-dark-600">
-                    5 attempts allowed per 15 minutes
+                    5 attempts allowed per 10 minutes
                 </p>
             </motion.div>
         </div>

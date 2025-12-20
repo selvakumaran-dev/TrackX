@@ -10,8 +10,8 @@ import { setBusLocation, getBusLocation, getAllBusLocations } from '../config/re
 import { isOnline, isValidGpsCoordinate } from '../utils/helpers.js';
 import { ApiError } from '../middlewares/errorHandler.js';
 
-// Offline threshold in seconds (2 minutes)
-const OFFLINE_THRESHOLD = parseInt(process.env.GPS_OFFLINE_THRESHOLD_SECONDS) || 120;
+// Offline threshold in seconds (10 seconds - allows for slight delays)
+const OFFLINE_THRESHOLD = parseInt(process.env.GPS_OFFLINE_THRESHOLD_SECONDS) || 10;
 
 /**
  * Process GPS update from device or driver app
@@ -48,6 +48,7 @@ export async function processGpsUpdate(data, bus, driverId = null, io = null) {
         driverPhone: bus.driver?.phone || null,
         source: driverId ? 'DRIVER_APP' : 'DEVICE',
         updatedAt: new Date().toISOString(), // Always use current time
+        isOnline: true, // Bus is online since we just received GPS data
     };
 
     // Store in Redis cache
@@ -70,9 +71,13 @@ export async function processGpsUpdate(data, bus, driverId = null, io = null) {
         },
     });
 
-    // Broadcast to Socket.IO room
+    // Broadcast to Socket.IO room (use uppercase for consistency)
     if (io) {
-        const roomName = `bus-${bus.busNumber}`;
+        const normalizedBusNumber = bus.busNumber.toUpperCase();
+        const roomName = `bus-${normalizedBusNumber}`;
+        const room = io.sockets.adapter.rooms.get(roomName);
+        const roomSize = room ? room.size : 0;
+        console.log(`📡 Broadcasting to ${roomName} (${roomSize} subscribers)`);
         io.to(roomName).emit('location-update', locationData);
 
         // Also emit to global room for admin dashboard

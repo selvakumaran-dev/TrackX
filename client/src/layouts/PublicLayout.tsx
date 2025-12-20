@@ -52,7 +52,7 @@ function PublicLayout() {
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
                             <div className="flex items-center gap-2">
                                 <Bus className="w-4 h-4 text-indigo-500" />
-                                <span>© 2024 TrackX. All rights reserved.</span>
+                                <span>© 2026 TrackX. All rights reserved.</span>
                             </div>
                             <div className="flex gap-6">
                                 <a href="#" className="hover:text-indigo-600 transition-colors">Privacy</a>

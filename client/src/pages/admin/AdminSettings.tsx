@@ -43,8 +43,9 @@ const AdminSettings: React.FC = () => {
             setNewPassword('');
             setConfirmPassword('');
             setMessage({ type: 'success', text: 'Password changed successfully!' });
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to change password' });
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to change password' });
         }
         setSaving(false);
     };
@@ -73,8 +74,8 @@ const AdminSettings: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         className={`p-4 rounded-xl flex items-center gap-3 ${message.type === 'success'
-                                ? 'bg-secondary-500/20 border border-secondary-500/30 text-secondary-400'
-                                : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                            ? 'bg-secondary-500/20 border border-secondary-500/30 text-secondary-400'
+                            : 'bg-red-500/20 border border-red-500/30 text-red-400'
                             }`}
                     >
                         {message.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
@@ -120,7 +121,6 @@ const AdminSettings: React.FC = () => {
                             type="password"
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
-                            placeholder="Enter current password"
                             className="input"
                             required
                         />
@@ -132,7 +132,6 @@ const AdminSettings: React.FC = () => {
                             type="password"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            placeholder="Enter new password (min 6 characters)"
                             className="input"
                             required
                             minLength={6}
@@ -145,7 +144,6 @@ const AdminSettings: React.FC = () => {
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Confirm new password"
                             className="input"
                             required
                         />

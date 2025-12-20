@@ -25,8 +25,33 @@ import {
 import api from '../../services/api';
 import BusStopsModal from '../../components/admin/BusStopsModal';
 
+// Type definitions
+interface Driver {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    bus?: BusData | null;
+}
+
+interface BusData {
+    id: string;
+    busNumber: string;
+    busName: string;
+    gpsDeviceId?: string;
+    isActive: boolean;
+    driver?: Driver | null;
+}
+
+interface ModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+}
+
 // Modal Component
-function Modal({ isOpen, onClose, title, children }) {
+function Modal({ isOpen, onClose, title, children }: ModalProps) {
     if (!isOpen) return null;
 
     return (
@@ -64,20 +89,20 @@ function Modal({ isOpen, onClose, title, children }) {
 }
 
 function AdminBuses() {
-    const [buses, setBuses] = useState([]);
+    const [buses, setBuses] = useState<BusData[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
-    const [availableDrivers, setAvailableDrivers] = useState([]);
+    const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
 
     // Modal states
     const [showModal, setShowModal] = useState(false);
-    const [editingBus, setEditingBus] = useState(null);
+    const [editingBus, setEditingBus] = useState<BusData | null>(null);
     const [showApiKeyModal, setShowApiKeyModal] = useState(false);
     const [generatedApiKey, setGeneratedApiKey] = useState('');
     const [copiedKey, setCopiedKey] = useState(false);
     const [showStopsModal, setShowStopsModal] = useState(false);
-    const [selectedBusForStops, setSelectedBusForStops] = useState(null);
+    const [selectedBusForStops, setSelectedBusForStops] = useState<BusData | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -109,14 +134,14 @@ function AdminBuses() {
     };
 
     // Fetch all drivers for assignment dropdown
-    const fetchAvailableDrivers = async (currentDriverId = null) => {
+    const fetchAvailableDrivers = async (currentDriverId: string | null | undefined = null) => {
         try {
             // Get all drivers
             const response = await api.get('/admin/drivers', { params: { limit: 100 } });
             const allDrivers = response.data.data || [];
 
             // Filter to show: available drivers + current driver (if editing)
-            const filtered = allDrivers.filter(d =>
+            const filtered = allDrivers.filter((d: Driver) =>
                 !d.bus || d.id === currentDriverId
             );
             setAvailableDrivers(filtered);
@@ -143,7 +168,7 @@ function AdminBuses() {
     };
 
     // Open edit modal
-    const openEditModal = (bus) => {
+    const openEditModal = (bus: BusData) => {
         setEditingBus(bus);
         setFormData({
             busNumber: bus.busNumber,
@@ -157,7 +182,7 @@ function AdminBuses() {
     };
 
     // Handle form submit
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         setFormError('');
@@ -178,34 +203,37 @@ function AdminBuses() {
             setShowModal(false);
             fetchBuses(pagination.page);
             fetchAvailableDrivers();
-        } catch (error) {
-            setFormError(error.response?.data?.error || 'Failed to save bus');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            setFormError(err.response?.data?.error || 'Failed to save bus');
         } finally {
             setSaving(false);
         }
     };
 
     // Delete bus
-    const handleDelete = async (bus) => {
+    const handleDelete = async (bus: BusData) => {
         if (!confirm(`Are you sure you want to delete ${bus.busNumber}?`)) return;
 
         try {
             await api.delete(`/admin/buses/${bus.id}`);
             fetchBuses(pagination.page);
             fetchAvailableDrivers();
-        } catch (error) {
-            alert(error.response?.data?.error || 'Failed to delete bus');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            alert(err.response?.data?.error || 'Failed to delete bus');
         }
     };
 
     // Generate API key
-    const handleGenerateApiKey = async (bus) => {
+    const handleGenerateApiKey = async (bus: BusData) => {
         try {
             const response = await api.post(`/admin/buses/${bus.id}/generate-api-key`);
             setGeneratedApiKey(response.data.data.apiKey);
             setShowApiKeyModal(true);
-        } catch (error) {
-            alert(error.response?.data?.error || 'Failed to generate API key');
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            alert(err.response?.data?.error || 'Failed to generate API key');
         }
     };
 
@@ -237,7 +265,6 @@ function AdminBuses() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search buses..."
                     className="input pl-12"
                 />
             </div>
@@ -390,7 +417,6 @@ function AdminBuses() {
                             type="text"
                             value={formData.busNumber}
                             onChange={(e) => setFormData({ ...formData, busNumber: e.target.value })}
-                            placeholder="e.g., BUS-001"
                             className="input"
                             required
                         />
@@ -402,7 +428,6 @@ function AdminBuses() {
                             type="text"
                             value={formData.busName}
                             onChange={(e) => setFormData({ ...formData, busName: e.target.value })}
-                            placeholder="e.g., Route A - Engineering Block"
                             className="input"
                             required
                         />
@@ -414,7 +439,6 @@ function AdminBuses() {
                             type="text"
                             value={formData.gpsDeviceId}
                             onChange={(e) => setFormData({ ...formData, gpsDeviceId: e.target.value })}
-                            placeholder="Optional"
                             className="input"
                         />
                     </div>

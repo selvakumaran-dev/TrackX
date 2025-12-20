@@ -190,14 +190,14 @@ const DriverHome: React.FC = () => {
             { enableHighAccuracy: true, timeout: 15000 }
         );
 
-        // Then continue sending every 5 seconds
+        // Then continue sending every 3 seconds for faster updates
         intervalRef.current = setInterval(() => {
             navigator.geolocation.getCurrentPosition(
                 sendLocation,
                 () => { /* Silently ignore interval errors - watch handles UI updates */ },
                 { enableHighAccuracy: true, timeout: 10000 }
             );
-        }, 5000);
+        }, 3000);
     };
 
     // Stop tracking

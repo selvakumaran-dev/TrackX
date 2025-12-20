@@ -11,6 +11,21 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { apiUrl, isDev } from '../../config/env';
+import ImageCropper from '../../components/ImageCropper';
+
+// Helper to get full photo URL
+// In development, uploads are served from the backend server (port 3001)
+// In production, they're served from the API_URL
+const getPhotoUrl = (photoUrl: string | null | undefined): string | null => {
+    if (!photoUrl) return null;
+    // If already absolute URL, return as-is
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl;
+    // In development, use localhost:3001 for uploads (bypasses Vite proxy issues)
+    // In production, use the configured API URL
+    const baseUrl = isDev ? 'http://localhost:3001' : apiUrl;
+    return `${baseUrl}${photoUrl}`;
+};
 
 interface DriverData {
     name: string;
@@ -42,9 +57,11 @@ const DriverProfile: React.FC = () => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    // Photo upload
+    // Photo upload and cropper
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [showCropper, setShowCropper] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string>('');
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -87,10 +104,23 @@ const DriverProfile: React.FC = () => {
             return;
         }
 
+        // Read file and open cropper
+        const reader = new FileReader();
+        reader.onload = () => {
+            setSelectedImage(reader.result as string);
+            setShowCropper(true);
+        };
+        reader.readAsDataURL(file);
+
+        // Reset input so same file can be selected again
+        e.target.value = '';
+    };
+
+    const handleCropComplete = async (croppedBlob: Blob) => {
         setUploadingPhoto(true);
         try {
             const formData = new FormData();
-            formData.append('photo', file);
+            formData.append('photo', croppedBlob, 'profile.jpg');
 
             const res = await api.post('/driver/profile/photo', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
@@ -98,10 +128,13 @@ const DriverProfile: React.FC = () => {
 
             setDriver(prev => prev ? { ...prev, photoUrl: res.data.data.photoUrl } : null);
             setMessage({ type: 'success', text: 'Photo updated!' });
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to upload photo' });
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to upload photo' });
         }
         setUploadingPhoto(false);
+        setShowCropper(false);
+        setSelectedImage('');
     };
 
     const handleEditProfile = async () => {
@@ -120,8 +153,9 @@ const DriverProfile: React.FC = () => {
             setDriver(prev => prev ? { ...prev, name: res.data.data.name, phone: res.data.data.phone } : null);
             setShowEditModal(false);
             setMessage({ type: 'success', text: 'Profile updated!' });
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to update profile' });
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to update profile' });
         }
         setSaving(false);
     };
@@ -152,8 +186,9 @@ const DriverProfile: React.FC = () => {
             setNewPassword('');
             setConfirmPassword('');
             setMessage({ type: 'success', text: 'Password changed!' });
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to change password' });
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { error?: string } } };
+            setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to change password' });
         }
         setSaving(false);
     };
@@ -212,8 +247,8 @@ const DriverProfile: React.FC = () => {
                     <div className="w-28 h-28 rounded-full bg-white/20 backdrop-blur flex items-center justify-center mx-auto overflow-hidden border-4 border-white/30">
                         {uploadingPhoto ? (
                             <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : driver?.photoUrl ? (
-                            <img src={driver.photoUrl} alt={driver.name} className="w-full h-full object-cover" />
+                        ) : getPhotoUrl(driver?.photoUrl) ? (
+                            <img src={getPhotoUrl(driver?.photoUrl)!} alt={driver?.name} className="w-full h-full object-cover" />
                         ) : (
                             <User className="w-14 h-14 text-white" />
                         )}
@@ -361,7 +396,6 @@ const DriverProfile: React.FC = () => {
                                         value={editName}
                                         onChange={(e) => setEditName(e.target.value)}
                                         className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
-                                        placeholder="Your name"
                                     />
                                 </div>
                                 <div>
@@ -371,7 +405,6 @@ const DriverProfile: React.FC = () => {
                                         value={editPhone}
                                         onChange={(e) => setEditPhone(e.target.value)}
                                         className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
-                                        placeholder="Your phone number"
                                     />
                                 </div>
                             </div>
@@ -427,7 +460,6 @@ const DriverProfile: React.FC = () => {
                                         value={currentPassword}
                                         onChange={(e) => setCurrentPassword(e.target.value)}
                                         className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
-                                        placeholder="••••••••"
                                     />
                                 </div>
                                 <div>
@@ -437,7 +469,6 @@ const DriverProfile: React.FC = () => {
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
-                                        placeholder="••••••••"
                                     />
                                 </div>
                                 <div>
@@ -447,7 +478,6 @@ const DriverProfile: React.FC = () => {
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
-                                        placeholder="••••••••"
                                     />
                                 </div>
                             </div>
@@ -470,6 +500,18 @@ const DriverProfile: React.FC = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Image Cropper Modal */}
+            <ImageCropper
+                isOpen={showCropper}
+                imageSrc={selectedImage}
+                onClose={() => {
+                    setShowCropper(false);
+                    setSelectedImage('');
+                }}
+                onCropComplete={handleCropComplete}
+                aspectRatio={1}
+            />
         </div>
     );
 };
