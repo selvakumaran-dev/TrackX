@@ -39,7 +39,11 @@ function LandingPage() {
         // Fetch real bus count
         const fetchStats = async () => {
             try {
-                const res = await api.get('/public/buses', { params: { limit: 1 } });
+                // Add cache-busting timestamp to get fresh data
+                const res = await api.get('/public/buses', {
+                    params: { limit: 1, _t: Date.now() },
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
                 setStats({
                     buses: res.data.pagination?.total || 0,
                     tracking: true,
@@ -67,7 +71,7 @@ function LandingPage() {
                         {/* Badge */}
                         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 mb-8">
                             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-sm text-indigo-700 font-medium">Live Bus Tracking for Tamil Nadu</span>
+                            <span className="text-sm text-indigo-700 font-medium">Live Bus Tracking</span>
                         </div>
 
                         {/* Headline */}
@@ -108,16 +112,36 @@ function LandingPage() {
                                             }} />
                                         </div>
 
-                                        {/* Animated Bus */}
-                                        <motion.div
-                                            className="absolute"
-                                            animate={{ x: [0, 100, 100, 0], y: [0, 50, 100, 50] }}
-                                            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                                        >
-                                            <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
-                                                <Bus className="w-6 h-6 text-white" />
-                                            </div>
-                                        </motion.div>
+                                        {/* Animated Buses - Show actual count */}
+                                        {!loading && Array.from({ length: Math.min(stats.buses, 5) }).map((_, index) => {
+                                            // Different animation paths for each bus
+                                            const animations = [
+                                                { x: [0, 100, 100, 0], y: [0, 50, 100, 50] },
+                                                { x: [150, 50, 50, 150], y: [80, 30, 80, 80] },
+                                                { x: [-50, 80, 120, -50], y: [40, 90, 40, 40] },
+                                                { x: [100, 0, 0, 100], y: [20, 70, 120, 20] },
+                                                { x: [50, 120, 50, 50], y: [60, 60, 10, 60] },
+                                            ];
+                                            const colors = [
+                                                'bg-indigo-500',
+                                                'bg-purple-500',
+                                                'bg-blue-500',
+                                                'bg-violet-500',
+                                                'bg-cyan-500',
+                                            ];
+                                            return (
+                                                <motion.div
+                                                    key={index}
+                                                    className="absolute"
+                                                    animate={animations[index % animations.length]}
+                                                    transition={{ duration: 8 + index * 2, repeat: Infinity, ease: "linear" }}
+                                                >
+                                                    <div className={`w-10 h-10 ${colors[index % colors.length]} rounded-xl flex items-center justify-center shadow-lg`}>
+                                                        <Bus className="w-5 h-5 text-white" />
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })}
 
                                         <div className="relative z-10 text-center">
                                             <p className="text-gray-500 text-sm">Interactive Map Preview</p>
