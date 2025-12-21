@@ -34,6 +34,7 @@ const features = [
 function LandingPage() {
     const [stats, setStats] = useState({ buses: 0, tracking: false });
     const [loading, setLoading] = useState(true);
+    const [apiError, setApiError] = useState(false);
 
     useEffect(() => {
         // Fetch real bus count
@@ -50,6 +51,9 @@ function LandingPage() {
                 });
             } catch (error) {
                 console.error('Failed to fetch stats:', error);
+                setApiError(true);
+                // Set fallback value for demo
+                setStats({ buses: 2, tracking: true });
             }
             setLoading(false);
         };
@@ -113,7 +117,7 @@ function LandingPage() {
                                         </div>
 
                                         {/* Animated Buses - Show actual count */}
-                                        {!loading && Array.from({ length: Math.min(stats.buses, 5) }).map((_, index) => {
+                                        {!loading && Array.from({ length: Math.max(Math.min(stats.buses, 5), 1) }).map((_, index) => {
                                             // Different animation paths for each bus
                                             const animations = [
                                                 { x: [0, 100, 100, 0], y: [0, 50, 100, 50] },
@@ -154,7 +158,7 @@ function LandingPage() {
                             <div className="flex justify-center gap-4 mt-6">
                                 <div className="bg-white shadow-lg shadow-gray-200/50 rounded-xl px-5 py-3 text-center border border-gray-100">
                                     <div className="text-lg font-bold text-indigo-600">
-                                        {loading ? '...' : stats.buses}
+                                        {loading ? '...' : (apiError ? stats.buses + '*' : stats.buses)}
                                     </div>
                                     <div className="text-xs text-gray-500">Buses</div>
                                 </div>
