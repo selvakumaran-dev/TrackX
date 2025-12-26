@@ -21,7 +21,8 @@ const router = Router();
  */
 router.post('/login', loginRateLimiter, validate(loginSchema), async (req, res, next) => {
     try {
-        const { email, password, userType } = req.body;
+        const { password, userType } = req.body;
+        const email = req.body.email?.toLowerCase();
 
         const result = await login(email, password, userType);
 
@@ -96,6 +97,13 @@ router.get('/me', authenticate, async (req, res, next) => {
                     name: true,
                     role: true,
                     lastLoginAt: true,
+                    organization: {
+                        select: {
+                            id: true,
+                            name: true,
+                            code: true,
+                        },
+                    },
                 },
             });
         } else {

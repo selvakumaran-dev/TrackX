@@ -18,11 +18,25 @@ export interface PaginatedResponse<T> {
 }
 
 // User Types
+export interface Organization {
+    id: string;
+    name: string;
+    code: string;
+    slug?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    subscriptionTier?: string;
+}
+
 export interface User {
     id: string;
     email: string;
     name: string;
-    type: 'ADMIN' | 'DRIVER';
+    type: 'SUPER_ADMIN' | 'ADMIN' | 'DRIVER';
+    role?: string;
+    organizationId?: string;
+    organization?: Organization;
 }
 
 export interface Driver {
@@ -68,6 +82,9 @@ export interface BusStop {
 
 // Location Types
 export interface BusLocation {
+    id?: string;
+    busId?: string;
+    organizationId?: string;
     busNumber: string;
     busName: string;
     lat: number | null;

@@ -19,6 +19,26 @@ const router = Router();
 router.use(rateLimiter);
 
 /**
+ * GET /api/public/stats
+ * Get global tracking statistics for landing page
+ */
+router.get('/stats', async (req, res, next) => {
+    try {
+        const stats = await GpsService.getGlobalStats();
+
+        // Cache for 5 seconds for real-time feel
+        res.set('Cache-Control', 'public, max-age=5');
+
+        res.json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
  * GET /api/public/bus/:busNumber
  * Get current location of a bus
  * Cached for 2 seconds (location updates every 5s anyway)
@@ -26,11 +46,33 @@ router.use(rateLimiter);
 router.get('/bus/:busNumber', async (req, res, next) => {
     try {
         const { busNumber } = req.params;
+        const { orgCode } = req.query;
+
+        if (!orgCode) {
+            return res.status(400).json({
+                success: false,
+                error: 'Organization code (orgCode) is required to identify the correct bus.',
+            });
+        }
 
         // Sanitize input
         const sanitized = busNumber.trim().toUpperCase().slice(0, 20);
 
-        const location = await GpsService.getBusCurrentLocation(sanitized);
+        // First find organization for ID
+        const { prisma } = await import('../config/database.js');
+        const org = await prisma.organization.findUnique({
+            where: { code: orgCode.toUpperCase().trim() },
+            select: { id: true }
+        });
+
+        if (!org) {
+            return res.status(404).json({
+                success: false,
+                error: 'Organization not found.',
+            });
+        }
+
+        const location = await GpsService.getBusCurrentLocation(sanitized, org.id);
 
         // Short cache for frequently accessed data
         res.set('Cache-Control', 'public, max-age=2, stale-while-revalidate=5');
@@ -51,9 +93,30 @@ router.get('/bus/:busNumber', async (req, res, next) => {
 router.get('/bus/:busNumber/history', async (req, res, next) => {
     try {
         const { busNumber } = req.params;
+        const { orgCode } = req.query;
         const limit = Math.min(parseInt(req.query.limit) || 10, 100);
 
-        const history = await GpsService.getBusLocationHistory(busNumber, limit);
+        if (!orgCode) {
+            return res.status(400).json({
+                success: false,
+                error: 'Organization code (orgCode) is required.',
+            });
+        }
+
+        const { prisma } = await import('../config/database.js');
+        const org = await prisma.organization.findUnique({
+            where: { code: String(orgCode).toUpperCase().trim() },
+            select: { id: true }
+        });
+
+        if (!org) {
+            return res.status(404).json({
+                success: false,
+                error: 'Organization not found.',
+            });
+        }
+
+        const history = await GpsService.getBusLocationHistory(busNumber, org.id, limit);
 
         // Cache history for 10 seconds
         res.set('Cache-Control', 'public, max-age=10');
@@ -70,6 +133,7 @@ router.get('/bus/:busNumber/history', async (req, res, next) => {
 /**
  * GET /api/public/buses
  * Get list of all active buses (for search/autocomplete)
+ * Query params: orgCode (optional) - filter by organization code
  * Cached longer since bus list doesn't change often
  */
 router.get('/buses', async (req, res, next) => {
@@ -77,11 +141,39 @@ router.get('/buses', async (req, res, next) => {
         const page = parseInt(req.query.page) || 1;
         const limit = Math.min(parseInt(req.query.limit) || 100, 100);
         const search = (req.query.search || '').trim().slice(0, 50);
+        const orgCode = (req.query.orgCode || '').trim().toUpperCase().slice(0, 20);
+
+        // If orgCode provided, look up organization
+        let organizationId = null;
+        let organization = null;
+        if (orgCode) {
+            const { prisma } = await import('../config/database.js');
+            organization = await prisma.organization.findUnique({
+                where: { code: orgCode },
+                select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                    logoUrl: true,
+                    primaryColor: true,
+                    isActive: true,
+                },
+            });
+
+            if (!organization || !organization.isActive) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Organization not found or inactive',
+                });
+            }
+            organizationId = organization.id;
+        }
 
         const result = await BusService.getAllBuses({
             page,
             limit,
             search,
+            organizationId,
         });
 
         // Return simplified list (reduced payload)
@@ -89,6 +181,10 @@ router.get('/buses', async (req, res, next) => {
             busNumber: bus.busNumber,
             busName: bus.busName,
             isActive: bus.isActive,
+            organization: bus.organization ? {
+                name: bus.organization.name,
+                code: bus.organization.code,
+            } : null,
         }));
 
         // Cache bus list for 30 seconds (rarely changes)
@@ -98,6 +194,12 @@ router.get('/buses', async (req, res, next) => {
             success: true,
             data: buses,
             pagination: result.pagination,
+            organization: organization ? {
+                name: organization.name,
+                code: organization.code,
+                logoUrl: organization.logoUrl,
+                primaryColor: organization.primaryColor,
+            } : null,
         });
     } catch (error) {
         next(error);
@@ -106,15 +208,35 @@ router.get('/buses', async (req, res, next) => {
 
 /**
  * GET /api/public/all-locations
- * Get all active bus locations
- * Most expensive endpoint - cached and rate limited
+ * Get all active bus locations for a specific organization
+ * Requires orgCode query parameter for security
  */
 router.get('/all-locations', async (req, res, next) => {
     try {
-        const locations = await GpsService.getAllActiveBusLocations();
+        const { orgCode } = req.query;
 
-        // Cache for 3 seconds
-        res.set('Cache-Control', 'public, max-age=3, stale-while-revalidate=10');
+        if (!orgCode) {
+            return res.status(400).json({
+                success: false,
+                error: 'Organization code (orgCode) is required',
+            });
+        }
+
+        // Look up organization
+        const { prisma } = await import('../config/database.js');
+        const organization = await prisma.organization.findUnique({
+            where: { code: String(orgCode).toUpperCase().trim() },
+            select: { id: true, isActive: true }
+        });
+
+        if (!organization || !organization.isActive) {
+            return res.status(404).json({
+                success: false,
+                error: 'Organization not found or inactive',
+            });
+        }
+
+        const locations = await GpsService.getOrganizationBusLocations(organization.id);
 
         res.json({
             success: true,
@@ -151,14 +273,28 @@ router.get('/health', (req, res) => {
 router.get('/eta/:busNumber', async (req, res, next) => {
     try {
         const { busNumber } = req.params;
-        const { destLat, destLon } = req.query;
+        const { destLat, destLon, orgCode } = req.query;
 
         if (!destLat || !destLon) {
             throw new ApiError(400, 'destLat and destLon are required');
         }
 
+        if (!orgCode) {
+            throw new ApiError(400, 'orgCode is required');
+        }
+
+        const { prisma } = await import('../config/database.js');
+        const org = await prisma.organization.findUnique({
+            where: { code: String(orgCode).toUpperCase().trim() },
+            select: { id: true }
+        });
+
+        if (!org) {
+            throw new ApiError(404, 'Organization not found');
+        }
+
         // Get current bus location
-        const location = await GpsService.getBusCurrentLocation(busNumber);
+        const location = await GpsService.getBusCurrentLocation(busNumber, org.id);
 
         if (!location || !location.lat || !location.lon) {
             throw new ApiError(404, 'Bus location not available');
@@ -169,8 +305,8 @@ router.get('/eta/:busNumber', async (req, res, next) => {
             location.busId || busNumber,
             location.lat,
             location.lon,
-            parseFloat(destLat),
-            parseFloat(destLon),
+            parseFloat(String(destLat)),
+            parseFloat(String(destLon)),
             location.speed || 0
         );
 
@@ -185,8 +321,8 @@ router.get('/eta/:busNumber', async (req, res, next) => {
                     speed: location.speed,
                 },
                 destination: {
-                    lat: parseFloat(destLat),
-                    lon: parseFloat(destLon),
+                    lat: parseFloat(String(destLat)),
+                    lon: parseFloat(String(destLon)),
                 },
                 ...eta,
             },
@@ -203,9 +339,24 @@ router.get('/eta/:busNumber', async (req, res, next) => {
 router.get('/eta/:busNumber/stops', async (req, res, next) => {
     try {
         const { busNumber } = req.params;
+        const { orgCode } = req.query;
+
+        if (!orgCode) {
+            throw new ApiError(400, 'orgCode is required');
+        }
+
+        const { prisma } = await import('../config/database.js');
+        const org = await prisma.organization.findUnique({
+            where: { code: String(orgCode).toUpperCase().trim() },
+            select: { id: true }
+        });
+
+        if (!org) {
+            throw new ApiError(404, 'Organization not found');
+        }
 
         // Get current bus location with stops
-        const location = await GpsService.getBusCurrentLocation(busNumber);
+        const location = await GpsService.getBusCurrentLocation(busNumber, org.id);
 
         if (!location) {
             throw new ApiError(404, 'Bus not found');

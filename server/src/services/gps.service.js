@@ -10,8 +10,27 @@ import { setBusLocation, getBusLocation, getAllBusLocations } from '../config/re
 import { isOnline, isValidGpsCoordinate } from '../utils/helpers.js';
 import { ApiError } from '../middlewares/errorHandler.js';
 
-// Offline threshold in seconds (10 seconds - allows for slight delays)
-const OFFLINE_THRESHOLD = parseInt(process.env.GPS_OFFLINE_THRESHOLD_SECONDS) || 10;
+// Offline threshold in seconds (30 seconds - accommodates for network jitter and signal drops)
+const OFFLINE_THRESHOLD = parseInt(process.env.GPS_OFFLINE_THRESHOLD_SECONDS) || 30;
+
+/**
+ * Get global statistics for landing page
+ */
+export async function getGlobalStats() {
+    const [totalBuses, activeLocations] = await Promise.all([
+        prisma.bus.count({ where: { isActive: true } }),
+        getAllBusLocations(),
+    ]);
+
+    const onlineBuses = activeLocations.filter(loc =>
+        isOnline(loc.updatedAt, OFFLINE_THRESHOLD)
+    ).length;
+
+    return {
+        totalBuses,
+        onlineBuses,
+    };
+}
 
 /**
  * Process GPS update from device or driver app
@@ -29,13 +48,13 @@ export async function processGpsUpdate(data, bus, driverId = null, io = null) {
     }
 
     // Log warning for inaccurate readings but don't block them
-    // (laptops/desktops without GPS can have very high accuracy values)
     if (accuracy && accuracy > 10000) {
         console.warn(`⚠️ Low GPS accuracy (${accuracy}m) for bus ${bus.busNumber}`);
     }
 
     // Create location data
     const locationData = {
+        busId: bus.id, // Add busId for uniqueness
         busNumber: bus.busNumber,
         busName: bus.busName,
         lat,
@@ -48,14 +67,15 @@ export async function processGpsUpdate(data, bus, driverId = null, io = null) {
         driverPhone: bus.driver?.phone || null,
         source: driverId ? 'DRIVER_APP' : 'DEVICE',
         updatedAt: new Date().toISOString(), // Always use current time
-        isOnline: true, // Bus is online since we just received GPS data
+        isOnline: true,
+        organizationId: bus.organizationId, // Add orgId for filtering
     };
 
-    // Store in Redis cache
-    await setBusLocation(bus.busNumber, locationData);
+    // Store in Redis cache using ID to prevent collision
+    await setBusLocation(bus.id, locationData);
     console.log(`📍 GPS Update: ${bus.busNumber} @ ${lat.toFixed(4)}, ${lon.toFixed(4)} (${speed} km/h)`);
 
-    // Save to database (optional - can be rate-limited)
+    // Save to database
     await prisma.gpsLog.create({
         data: {
             latitude: lat,
@@ -71,38 +91,70 @@ export async function processGpsUpdate(data, bus, driverId = null, io = null) {
         },
     });
 
-    // Broadcast to Socket.IO room (use uppercase for consistency)
+    // Broadcast to Socket.IO
     if (io) {
-        const normalizedBusNumber = bus.busNumber.toUpperCase();
-        const roomName = `bus-${normalizedBusNumber}`;
-        const room = io.sockets.adapter.rooms.get(roomName);
-        const roomSize = room ? room.size : 0;
-        console.log(`📡 Broadcasting to ${roomName} (${roomSize} subscribers)`);
-        io.to(roomName).emit('location-update', locationData);
+        // Broadcast to bus-specific room (using ID for uniqueness)
+        const busRoom = `bus-${bus.id}`;
+        io.to(busRoom).emit('location-update', locationData);
 
-        // Also emit to global room for admin dashboard
-        io.to('admin-dashboard').emit('bus-update', locationData);
+        // Broadcast to organization-specific admin dashboard
+        const adminRoom = `admin-dashboard-${bus.organizationId}`;
+        io.to(adminRoom).emit('bus-update', locationData);
     }
 
     return locationData;
 }
 
 /**
+ * Stop tracking for a bus (explicitly set offline)
+ * @param {string} busId - Bus ID
+ * @param {object} io - Socket.IO instance
+ */
+export async function stopTracking(busId, io = null) {
+    const cachedLocation = await getBusLocation(busId);
+    if (!cachedLocation) return;
+
+    const locationData = {
+        ...cachedLocation,
+        isOnline: false,
+        updatedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago to ensure offline
+    };
+
+    // Store updated data in Redis
+    await setBusLocation(busId, locationData);
+
+    // Broadcast to Socket.IO
+    if (io) {
+        const busRoom = `bus-${busId}`;
+        io.to(busRoom).emit('location-update', locationData);
+
+        const adminRoom = `admin-dashboard-${cachedLocation.organizationId}`;
+        io.to(adminRoom).emit('bus-update', locationData);
+    }
+
+    console.log(`⏹️ Tracking Stopped: ${cachedLocation.busNumber}`);
+}
+
+/**
  * Get current location of a bus
  * @param {string} busNumber - Bus number
+ * @param {string} organizationId - Optional organization filter
  */
-export async function getBusCurrentLocation(busNumber) {
+export async function getBusCurrentLocation(busNumber, organizationId = null) {
     // Normalize to uppercase for case-insensitive lookup
     const normalizedNumber = busNumber.toUpperCase().trim();
 
+    const where = {
+        busNumber: {
+            equals: normalizedNumber,
+            mode: 'insensitive',
+        },
+        ...(organizationId && { organizationId }),
+    };
+
     // Get bus with stops first
     const bus = await prisma.bus.findFirst({
-        where: {
-            busNumber: {
-                equals: normalizedNumber,
-                mode: 'insensitive',
-            }
-        },
+        where,
         include: {
             driver: {
                 select: {
@@ -124,8 +176,8 @@ export async function getBusCurrentLocation(busNumber) {
         throw new ApiError(404, 'Bus not found');
     }
 
-    // Try Redis cache first for location
-    let cachedLocation = await getBusLocation(busNumber);
+    // Try Redis cache first using ID
+    let cachedLocation = await getBusLocation(bus.id);
 
     let location;
     if (cachedLocation) {
@@ -133,6 +185,7 @@ export async function getBusCurrentLocation(busNumber) {
             ...cachedLocation,
             isOnline: isOnline(cachedLocation.updatedAt, OFFLINE_THRESHOLD),
             stops: bus.stops,
+            busId: bus.id, // Ensure busId is present
         };
     } else {
         // Use DB data
@@ -140,6 +193,7 @@ export async function getBusCurrentLocation(busNumber) {
 
         if (!lastLog) {
             return {
+                busId: bus.id,
                 busNumber: bus.busNumber,
                 busName: bus.busName,
                 lat: null,
@@ -154,6 +208,7 @@ export async function getBusCurrentLocation(busNumber) {
         }
 
         location = {
+            busId: bus.id,
             busNumber: bus.busNumber,
             busName: bus.busName,
             lat: lastLog.latitude,
@@ -166,10 +221,12 @@ export async function getBusCurrentLocation(busNumber) {
             updatedAt: lastLog.timestamp.toISOString(),
             isOnline: isOnline(lastLog.timestamp, OFFLINE_THRESHOLD),
             stops: bus.stops,
+            organizationId: bus.organizationId,
         };
 
-        // Cache location (without stops which are in DB)
-        await setBusLocation(busNumber, {
+        // Cache location
+        await setBusLocation(bus.id, {
+            busId: location.busId,
             busNumber: location.busNumber,
             busName: location.busName,
             lat: location.lat,
@@ -180,6 +237,7 @@ export async function getBusCurrentLocation(busNumber) {
             driverPhone: location.driverPhone,
             source: location.source,
             updatedAt: location.updatedAt,
+            organizationId: location.organizationId,
         });
     }
 
@@ -187,7 +245,26 @@ export async function getBusCurrentLocation(busNumber) {
 }
 
 /**
- * Get all active bus locations
+ * Get all active bus locations for an organization
+ * @param {string} organizationId - Organization ID
+ */
+export async function getOrganizationBusLocations(organizationId) {
+    if (!organizationId) return [];
+
+    // Get all cached locations
+    const allLocations = await getAllBusLocations();
+
+    // Filter by organization and enhance with online status
+    return allLocations
+        .filter(loc => loc.organizationId === organizationId)
+        .map(loc => ({
+            ...loc,
+            isOnline: isOnline(loc.updatedAt, OFFLINE_THRESHOLD),
+        }));
+}
+
+/**
+ * Get all active bus locations (System-wide - Internal/SuperAdmin use only)
  */
 export async function getAllActiveBusLocations() {
     // Get from Redis
@@ -205,15 +282,23 @@ export async function getAllActiveBusLocations() {
 /**
  * Get location history for a bus
  * @param {string} busNumber - Bus number
+ * @param {string} organizationId - Organization ID for security & uniqueness
  * @param {number} limit - Number of records
  */
-export async function getBusLocationHistory(busNumber, limit = 10) {
-    const bus = await prisma.bus.findUnique({
-        where: { busNumber },
+export async function getBusLocationHistory(busNumber, organizationId, limit = 10) {
+    if (!organizationId) {
+        throw new ApiError(400, 'Organization ID is required for history lookup');
+    }
+
+    const bus = await prisma.bus.findFirst({
+        where: {
+            busNumber: { equals: busNumber.toUpperCase(), mode: 'insensitive' },
+            organizationId,
+        },
     });
 
     if (!bus) {
-        throw new ApiError(404, 'Bus not found');
+        throw new ApiError(404, 'Bus not found in this organization');
     }
 
     const history = await prisma.gpsLog.findMany({
@@ -266,46 +351,57 @@ export async function getDriverLocationHistory(driverId, limit = 10) {
 
 /**
  * Get dashboard statistics
+ * @param {string} organizationId - Optional organization filter
  */
-export async function getDashboardStats() {
+export async function getDashboardStats(organizationId = null) {
     // Get active drivers (logged in within last 24 hours)
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
+    const where = { organizationId: organizationId, isActive: true };
+
     const [totalBuses, totalDrivers, activeDrivers, activeLocations] = await Promise.all([
-        prisma.bus.count({ where: { isActive: true } }),
-        prisma.driver.count({ where: { isActive: true } }),
+        prisma.bus.count({ where }),
+        prisma.driver.count({ where }),
         prisma.driver.count({
             where: {
-                isActive: true,
+                ...where,
                 lastLoginAt: { gte: twentyFourHoursAgo }
             }
         }),
         getAllBusLocations(),
     ]);
 
-    // Count online/offline buses
-    const now = Date.now();
-    let onlineBuses = 0;
-    let offlineBuses = 0;
+    // Calculate online buses using Bus IDs
+    let validBusIds = null;
+    if (organizationId !== undefined) {
+        const orgBuses = await prisma.bus.findMany({
+            where: { organizationId: organizationId, isActive: true },
+            select: { id: true }
+        });
+        validBusIds = new Set(orgBuses.map(b => b.id));
+    }
 
-    activeLocations.forEach(loc => {
+    let onlineBuses = 0;
+
+    // Filter active locations
+    const relevantLocations = organizationId
+        ? activeLocations.filter(loc => validBusIds && validBusIds.has(loc.busId))
+        : activeLocations;
+
+    relevantLocations.forEach(loc => {
         if (isOnline(loc.updatedAt, OFFLINE_THRESHOLD)) {
             onlineBuses++;
-        } else {
-            offlineBuses++;
         }
     });
 
-    // Buses without any location data
-    const busesWithoutLocation = totalBuses - activeLocations.length;
-    offlineBuses += busesWithoutLocation;
+    const offlineBuses = Math.max(0, totalBuses - onlineBuses);
 
     return {
         totalBuses,
         totalDrivers,
-        activeDrivers,      // Drivers who logged in last 24h
-        onlineBuses,        // Buses currently sending GPS
+        activeDrivers,
+        onlineBuses,
         offlineBuses,
         lastUpdated: new Date().toISOString(),
     };
@@ -313,10 +409,13 @@ export async function getDashboardStats() {
 
 /**
  * Get detailed bus status list
+ * @param {string} organizationId - Optional organization filter
  */
-export async function getBusStatusList() {
+export async function getBusStatusList(organizationId = null) {
+    const where = { organizationId: organizationId, isActive: true };
+
     const buses = await prisma.bus.findMany({
-        where: { isActive: true },
+        where,
         include: {
             driver: {
                 select: {
@@ -330,10 +429,11 @@ export async function getBusStatusList() {
     });
 
     const locations = await getAllBusLocations();
-    const locationMap = new Map(locations.map(loc => [loc.busNumber, loc]));
+    // Use busId for maping to handle duplicate bus numbers
+    const locationMap = new Map(locations.map(loc => [loc.busId, loc]));
 
     const statusList = buses.map(bus => {
-        const location = locationMap.get(bus.busNumber);
+        const location = locationMap.get(bus.id);
 
         return {
             id: bus.id,

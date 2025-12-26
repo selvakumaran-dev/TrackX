@@ -5,12 +5,11 @@
 
 import { io, Socket } from 'socket.io-client';
 import type { BusLocation } from '../types';
+import { socketUrl } from '../config/env';
 
 // In development, use same origin (Vite proxy handles it)
 // In production, use the configured URL
-const SOCKET_URL = import.meta.env.DEV
-    ? window.location.origin
-    : (import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001');
+const SOCKET_URL = socketUrl || window.location.origin;
 
 type LocationCallback = (data: BusLocation) => void;
 type StatusCallback = (status: { tracking: boolean; message?: string }) => void;
@@ -24,7 +23,7 @@ class SocketService {
      * Connect to Socket.IO server
      */
     connect(): Socket {
-        if (this.socket?.connected) {
+        if (this.socket) {
             return this.socket;
         }
 
@@ -72,18 +71,18 @@ class SocketService {
     /**
      * Subscribe to a bus for location updates
      */
-    subscribeToBus(busNumber: string): void {
+    subscribeToBus(busId: string): void {
         if (!this.socket) this.connect();
-        this.subscribedBuses.add(busNumber);
-        this.socket?.emit('join-bus', busNumber);
+        this.subscribedBuses.add(busId);
+        this.socket?.emit('join-bus', busId);
     }
 
     /**
      * Unsubscribe from a bus
      */
-    unsubscribeFromBus(busNumber: string): void {
-        this.subscribedBuses.delete(busNumber);
-        this.socket?.emit('leave-bus', busNumber);
+    unsubscribeFromBus(busId: string): void {
+        this.subscribedBuses.delete(busId);
+        this.socket?.emit('leave-bus', busId);
     }
 
     /**

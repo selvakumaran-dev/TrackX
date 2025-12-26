@@ -1,262 +1,87 @@
-# 🚀 TrackX - Enterprise Real-Time Bus Tracking System
+# 🚀 TrackX Platinum - Enterprise Real-Time Bus Tracking
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Latest-green.svg)](https://www.mongodb.com/)
 
-**TrackX** is a production-ready, enterprise-grade real-time bus tracking system designed for educational institutions. It provides live GPS tracking, driver management, and an intuitive admin dashboard.
+**TrackX Platinum** is a production-hardened, enterprise-grade multi-tenant bus tracking platform. Designed specifically for large educational institutions, it offers a high-performance telemetry engine, robust organizational isolation, and a premium "Warm Sage" user interface.
 
 ---
 
-## 📋 Table of Contents
+## 💎 Platinum Infrastructure Updates
 
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Quick Start](#-quick-start)
-- [Environment Setup](#-environment-setup)
-- [API Documentation](#-api-documentation)
-- [Deployment](#-deployment)
+The platform has recently been upgraded to **Platinum Status**, featuring:
+- **Atomic Reset Logic**: New `reset-platinum` engine that wipes institutional data while preserving core system governance (Super Admin & Master Org).
+- **Graceful Deletion Sequencing**: Handles complex foreign key and unique constraint scenarios (e.g., Driver-Bus-Org relationships) without database errors.
+- **Strict Tenant Enforcement**: Optimized tracking flow that strictly validates institution codes before revealing telemetry data, preventing orphaned search sessions.
+- **Auth Hardening**: Corrected organization state propagation during admin authentication to ensure zero-downtime access to institutional dashboards.
 
 ---
 
 ## ✨ Features
 
-### 🎯 Public User View (Students)
-- Real-time bus tracking on interactive map
-- Bus speed and last update information
-- "Bus Offline" indicator (no update for 2 minutes)
-- Auto-pan to live bus position
-- Custom map tiles support
+### 🎯 Public Tracking (Students)
+- **Institution-Locked Tracking**: Students enter a unique college code to access their specific fleet.
+- **Smart ETA Prediction**: Real-time arrival estimates based on traffic factors and historical telemetry.
+- **Dynamic Route Mapping**: Interactive visual progress bar showing stops reached and upcoming waypoints.
 
-### 🔧 Admin Panel
-- **Bus Management**: Add/Edit/Delete buses, assign drivers, generate API keys
-- **Driver Management**: CRUD operations, photo upload, credential management
-- **Dashboard**: Real-time statistics, bus status overview
-- **API Key Generator**: Unique keys per bus for GPS devices
+### 🔧 Administrative Dashboard
+- **Institutional Governance**: Full control over buses, drivers, and route stops.
+- **Hardware API Hub**: Generate and rotate secure API keys for external GPS hardware integration.
+- **Master Metrics**: Live dashboard showing fleet health, online/offline status, and system telemetry.
 
-### 📱 Driver App (PWA)
-- Mobile-friendly Progressive Web App
-- Browser-based geolocation tracking
-- Start/Stop tracking functionality
-- Profile management
-- Location history log
-
-### 🛰️ GPS Device Integration
-- Secure REST endpoint for GPS devices
-- API key authentication
-- Real-time coordinate broadcasting
-- Speed and timestamp tracking
+### 📱 Driver Application
+- **Zero-Config Tracking**: Simplified PWA allowing drivers to sync location with a single tap.
+- **Battery-Optimized Engine**: Efficient GPS polling that minimizes device power consumption.
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Backend
-- **Runtime**: Node.js 18+
-- **Framework**: Express.js
-- **Real-time**: Socket.IO
-- **Database**: PostgreSQL + Prisma ORM
-- **Cache**: Redis
-- **Auth**: JWT (Access + Refresh tokens)
-- **Validation**: Zod
-- **Security**: Helmet, bcrypt, rate-limiting
-
-### Frontend
-- **Framework**: React 18 + Vite
-- **Styling**: Tailwind CSS + shadcn/ui
-- **Maps**: Leaflet.js
-- **Real-time**: Socket.IO Client
-- **Animations**: Framer Motion
-- **State**: React Context API
+- **Backend**: Node.js (ESM), Express, Socket.IO 4.x, Prisma (MongoDB)
+- **Frontend**: React 18, Vite, Framer Motion, Leaflet.js
+- **Security**: JWT Identity Rotation, bcryptjs (Salt 10), Organization Scoping
 
 ---
 
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         TrackX Architecture                      │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐   │
-│  │ GPS Device   │    │ Driver App   │    │ Student View     │   │
-│  │ (Hardware)   │    │ (PWA)        │    │ (Web)            │   │
-│  └──────┬───────┘    └──────┬───────┘    └────────┬─────────┘   │
-│         │                   │                     │              │
-│         │ POST /api/gps     │ POST /api/gps       │ Socket.IO    │
-│         │                   │                     │              │
-│         ▼                   ▼                     ▼              │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                    Express.js Backend                     │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐   │   │
-│  │  │ REST API    │  │ Socket.IO   │  │ Middlewares     │   │   │
-│  │  │ Controllers │  │ Server      │  │ (Auth, Rate)    │   │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────────┘   │   │
-│  └────────────────────────┬─────────────────────────────────┘   │
-│                           │                                      │
-│         ┌─────────────────┼─────────────────┐                   │
-│         ▼                 ▼                 ▼                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │  PostgreSQL  │  │    Redis     │  │   Socket.IO  │          │
-│  │  (Prisma)    │  │   (Cache)    │  │   Broadcast  │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+
-- Redis 7+
-- npm or yarn
+## 🚀 Quick Start & Reset
 
 ### Installation
-
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/trackx.git
+# Clone and Install
+git clone https://github.com/selvakumaran-dev/trackx.git
 cd trackx
 
-# Install backend dependencies
-cd server
-npm install
+# Setup Server
+cd server && npm install
+cp .env.example .env # Configure DATABASE_URL
 
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# Run database migrations
-npx prisma migrate dev
-
-# Seed the database (optional)
+# Initial Provisioning
 npm run seed
-
-# Start the backend
-npm run dev
-
-# In a new terminal, install frontend dependencies
-cd ../client
-npm install
-
-# Start the frontend
 npm run dev
 ```
 
----
-
-## ⚙️ Environment Setup
-
-### Backend (.env)
-
-```env
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/trackx"
-
-# Redis
-REDIS_URL="redis://localhost:6379"
-
-# JWT Secrets
-JWT_ACCESS_SECRET="your-super-secret-access-key-min-32-chars"
-JWT_REFRESH_SECRET="your-super-secret-refresh-key-min-32-chars"
-JWT_ACCESS_EXPIRY="15m"
-JWT_REFRESH_EXPIRY="7d"
-
-# Server
-PORT=3001
-NODE_ENV="development"
-
-# CORS
-CORS_ORIGIN="http://localhost:5173"
-```
-
-### Frontend (.env)
-
-```env
-VITE_API_URL=http://localhost:3001
-VITE_SOCKET_URL=http://localhost:3001
-VITE_MAP_TILE_URL=https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
-```
-
----
-
-## 📖 API Documentation
-
-### Authentication
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/auth/login` | POST | Login (Admin/Driver) |
-| `/api/auth/refresh` | POST | Refresh access token |
-| `/api/auth/logout` | POST | Logout and blacklist token |
-
-### GPS Updates
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/gps/update` | POST | Update bus location |
-
-### Admin Routes
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/admin/buses` | GET/POST | List/Create buses |
-| `/api/admin/buses/:id` | GET/PUT/DELETE | Bus CRUD |
-| `/api/admin/drivers` | GET/POST | List/Create drivers |
-| `/api/admin/drivers/:id` | GET/PUT/DELETE | Driver CRUD |
-| `/api/admin/dashboard` | GET | Dashboard stats |
-| `/api/admin/api-keys/generate` | POST | Generate bus API key |
-
-### Driver Routes
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/driver/profile` | GET/PUT | Driver profile |
-| `/api/driver/location-history` | GET | Last 10 locations |
-
----
-
-## 🚢 Deployment
-
-### Render
-
-1. Create a new Web Service for the backend
-2. Set environment variables
-3. Build command: `npm install && npx prisma migrate deploy`
-4. Start command: `npm start`
-
-### Vercel (Frontend)
-
-1. Import the `client` folder
-2. Set environment variables
-3. Deploy automatically
-
-### Docker
-
+### Platinum Reset (Fresh Start)
+To wipe all test data/organizations while keeping your Super Admin access:
 ```bash
-docker-compose up -d
+npm run reset-platinum
 ```
 
 ---
 
-## 📄 License
+## 🔐 Default Credentials (Platinum Seed)
 
-MIT License - feel free to use this project for your institution.
+| Role | Email | Password | Code |
+|------|-------|----------|----------|
+| **Super Admin** | `root@trackx.com` | `Admin@123` | `TRACKX` |
 
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+*Note: Institutional admins and drivers are created dynamically via the Admin Panel or Registration flow.*
 
 ---
 
-**Built with ❤️ by TrackX Team**
+## 📄 License & Development
+
+Built for institutional excellence by the **TrackX Development Team**.
+Licensed under the MIT License.
+

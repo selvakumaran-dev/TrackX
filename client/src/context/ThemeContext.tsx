@@ -1,5 +1,6 @@
 /**
  * Theme Context - TypeScript
+ * Enforced Warm/Light Theme for Human-Centered Design
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -19,17 +20,16 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-    const [isDark, setIsDark] = useState(true);
+    // Default to LIGHT (Warm Theme)
+    const [isDark, setIsDark] = useState(false);
 
-    // Initialize theme from localStorage or system preference
+    // Initialize theme from localStorage
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            setIsDark(savedTheme === 'dark');
-        } else {
-            // Check system preference
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            setIsDark(prefersDark);
+        if (savedTheme === 'dark') {
+            // Temporarily disable dark mode default to ensure new design is seen
+            // setIsDark(true); 
+            setIsDark(false);
         }
     }, []);
 

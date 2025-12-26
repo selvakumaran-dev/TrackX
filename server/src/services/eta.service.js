@@ -49,6 +49,18 @@ const speedCache = new Map();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 /**
+ * Periodically cleanup speed cache to prevent memory leaks
+ */
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of speedCache.entries()) {
+        if (now - value.timestamp > CACHE_TTL * 2) {
+            speedCache.delete(key);
+        }
+    }
+}, 60 * 60 * 1000); // Every hour
+
+/**
  * Calculate smart ETA with ML-inspired predictions
  * @param {string} busId - Bus ID
  * @param {number} busLat - Current bus latitude

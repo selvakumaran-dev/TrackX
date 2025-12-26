@@ -31,6 +31,8 @@ import adminRoutes from './routes/admin.routes.js';
 import driverRoutes from './routes/driver.routes.js';
 import gpsRoutes from './routes/gps.routes.js';
 import publicRoutes from './routes/public.routes.js';
+import organizationRoutes from './routes/organization.routes.js';
+import superAdminRoutes from './routes/superadmin.routes.js';
 
 // ============================================
 // Initialize Express Application
@@ -91,6 +93,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/gps', gpsRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/organizations', organizationRoutes);
+app.use('/api/superadmin', superAdminRoutes);
 
 // ============================================
 // Health Check Endpoint (for load balancers)
@@ -145,9 +149,9 @@ const PORT = process.env.PORT || 3001;
 
 async function startServer() {
     try {
-        // Connect to PostgreSQL via Prisma
+        // Connect to MongoDB via Prisma
         await prisma.$connect();
-        console.log('✅ PostgreSQL connected via Prisma');
+        console.log('✅ MongoDB connected via Prisma');
 
         // Connect to Redis
         await connectRedis();

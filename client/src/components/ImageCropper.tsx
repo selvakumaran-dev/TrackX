@@ -1,5 +1,6 @@
 /**
  * Image Cropper Modal Component
+ * Human-Centered Design - Sage Green Theme
  * Allows users to crop profile photos before uploading
  */
 
@@ -130,81 +131,101 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                className="fixed inset-0 z-[3000] flex items-center justify-center bg-[#1B4332]/40 backdrop-blur-md p-4"
+                onClick={onClose}
             >
                 <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-dark-800 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+                    initial={{ scale: 0.9, opacity: 0, y: 50 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                    className="bg-[#FDFBF7] rounded-[2.5rem] shadow-2xl max-w-lg w-full overflow-hidden border border-[#E9ECEF]"
+                    onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between p-4 border-b border-dark-700">
-                        <h3 className="text-lg font-semibold text-white">Crop Photo</h3>
+                    <div className="flex items-center justify-between p-6 bg-white border-b border-[#E9ECEF]">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-[#D8F3DC] flex items-center justify-center">
+                                <Check className="w-5 h-5 text-[#2D6A4F]" />
+                            </div>
+                            <h3 className="text-xl font-bold text-[#1B4332]">Photo Editor</h3>
+                        </div>
                         <button
                             onClick={onClose}
-                            className="p-2 rounded-lg hover:bg-dark-700 text-gray-400 hover:text-white transition-colors"
+                            className="p-3 rounded-2xl bg-[#F8F9FA] hover:bg-[#E9ECEF] text-[#74796D] transition-colors"
                         >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
                     {/* Crop Area */}
-                    <div className="p-4 bg-dark-900 flex justify-center items-center min-h-[300px] max-h-[400px] overflow-auto">
-                        <ReactCrop
-                            crop={crop}
-                            onChange={(_, percentCrop) => setCrop(percentCrop)}
-                            onComplete={(c) => setCompletedCrop(c)}
-                            aspect={aspectRatio}
-                            circularCrop
-                            className="max-w-full"
-                        >
-                            <img
-                                ref={imgRef}
-                                src={imageSrc}
-                                alt="Crop preview"
-                                style={{
-                                    transform: `scale(${scale}) rotate(${rotate}deg)`,
-                                    maxHeight: '350px',
-                                }}
-                                onLoad={onImageLoad}
-                                className="transition-transform"
-                            />
-                        </ReactCrop>
+                    <div className="p-8 bg-[#FDFBF7] flex justify-center items-center min-h-[300px] max-h-[450px] overflow-hidden">
+                        <div className="relative rounded-3xl overflow-hidden shadow-inner bg-white p-2 border-2 border-[#E9ECEF]">
+                            <ReactCrop
+                                crop={crop}
+                                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                onComplete={(c) => setCompletedCrop(c)}
+                                aspect={aspectRatio}
+                                circularCrop
+                                className="max-w-full"
+                            >
+                                <img
+                                    ref={imgRef}
+                                    src={imageSrc}
+                                    alt="Crop preview"
+                                    style={{
+                                        transform: `scale(${scale}) rotate(${rotate}deg)`,
+                                        maxHeight: '350px',
+                                        borderRadius: '1rem'
+                                    }}
+                                    onLoad={onImageLoad}
+                                    className="transition-transform duration-300"
+                                />
+                            </ReactCrop>
+                        </div>
                     </div>
 
                     {/* Controls */}
-                    <div className="p-4 border-t border-dark-700 space-y-4">
+                    <div className="p-8 bg-white border-t border-[#E9ECEF] space-y-8">
                         {/* Zoom Control */}
-                        <div className="flex items-center gap-4">
-                            <ZoomOut className="w-4 h-4 text-gray-400" />
-                            <input
-                                type="range"
-                                min="0.5"
-                                max="2"
-                                step="0.1"
-                                value={scale}
-                                onChange={(e) => setScale(parseFloat(e.target.value))}
-                                className="flex-1 h-2 bg-dark-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                            />
-                            <ZoomIn className="w-4 h-4 text-gray-400" />
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center px-1">
+                                <span className="text-[10px] font-black text-[#95A3A4] uppercase tracking-widest">Adjust Zoom</span>
+                                <span className="text-xs font-bold text-[#2D6A4F]">{Math.round(scale * 100)}%</span>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <button onClick={() => setScale(s => Math.max(0.5, s - 0.1))} className="p-2 text-[#74796D] hover:text-[#2D6A4F]">
+                                    <ZoomOut className="w-5 h-5" />
+                                </button>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="2"
+                                    step="0.01"
+                                    value={scale}
+                                    onChange={(e) => setScale(parseFloat(e.target.value))}
+                                    className="flex-1 h-2 bg-[#D8F3DC] rounded-full appearance-none cursor-pointer accent-[#2D6A4F]"
+                                />
+                                <button onClick={() => setScale(s => Math.min(2, s + 0.1))} className="p-2 text-[#74796D] hover:text-[#2D6A4F]">
+                                    <ZoomIn className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex gap-3">
+                        <div className="flex gap-4">
                             <button
                                 onClick={handleReset}
-                                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-dark-700 hover:bg-dark-600 text-gray-300 font-medium transition-colors"
+                                className="flex-1 flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-[#F8F9FA] hover:bg-[#E9ECEF] text-[#74796D] font-bold text-sm transition-all border border-[#E9ECEF]"
                             >
                                 <RotateCcw className="w-4 h-4" />
                                 Reset
                             </button>
                             <button
                                 onClick={handleConfirm}
-                                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors"
+                                className="flex-[2] flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-gradient-to-br from-[#2D6A4F] to-[#40916C] text-white font-bold text-sm shadow-xl shadow-[#2D6A4F]/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                             >
-                                <Check className="w-4 h-4" />
-                                Apply
+                                <Check className="w-5 h-5" />
+                                Update Profile Photo
                             </button>
                         </div>
                     </div>

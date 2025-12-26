@@ -16,6 +16,7 @@ import DriverLayout from './layouts/DriverLayout';
 
 // Loading component
 import LoadingScreen from './components/LoadingScreen';
+import PWAUpdater from './components/PWAUpdater';
 
 // Lazy load pages for code splitting
 const TrackingPage = lazy(() => import('./pages/TrackingPage'));
@@ -24,11 +25,23 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminBuses = lazy(() => import('./pages/admin/AdminBuses'));
 const AdminDrivers = lazy(() => import('./pages/admin/AdminDrivers'));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminOrganization = lazy(() => import('./pages/admin/AdminOrganization'));
 const DriverLogin = lazy(() => import('./pages/driver/DriverLogin'));
 const DriverHome = lazy(() => import('./pages/driver/DriverHome'));
 const DriverProfile = lazy(() => import('./pages/driver/DriverProfile'));
 const DriverHistory = lazy(() => import('./pages/driver/DriverHistory'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+
+// Master Admin Pages
+const MasterLayout = lazy(() => import('./layouts/MasterLayout'));
+const MasterAccess = lazy(() => import('./pages/superadmin/MasterAccess'));
+const MasterDashboard = lazy(() => import('./pages/superadmin/MasterDashboard'));
+
+const MasterOrganizations = lazy(() => import('./pages/superadmin/MasterOrganizations'));
+const MasterSystemHealth = lazy(() => import('./pages/superadmin/MasterSystemHealth'));
+const MasterSettings = lazy(() => import('./pages/superadmin/MasterSettings'));
+const MasterGlobalMap = lazy(() => import('./pages/superadmin/MasterGlobalMap'));
 
 // Types
 type UserRole = 'ADMIN' | 'DRIVER';
@@ -105,6 +118,20 @@ function DriverLoginRoute({ children }: { children: ReactNode }): JSX.Element {
     return <>{children}</>;
 }
 
+// SuperAdmin protected route
+function SuperAdminProtectedRoute({ children }: { children: ReactNode }): JSX.Element {
+    const { user, isSuperAdmin, loading } = useAuth();
+    const location = useLocation();
+
+    if (loading) return <LoadingScreen />;
+
+    if (!user || user.type !== 'SUPER_ADMIN') {
+        return <Navigate to="/master/access" state={{ from: location }} replace />;
+    }
+
+    return <>{children}</>;
+}
+
 function App(): JSX.Element {
     return (
         <Suspense fallback={<LoadingScreen />}>
@@ -115,6 +142,28 @@ function App(): JSX.Element {
                 <Route path="/" element={<PublicLayout />}>
                     <Route index element={<LandingPage />} />
                     <Route path="track" element={<TrackingPage />} />
+                    <Route path="register" element={<RegisterPage />} />
+                </Route>
+
+                <Route path="/master/access" element={<MasterAccess />} />
+
+                {/* ============================================ */}
+                {/* SUPER ADMIN PANEL - Master Level */}
+                {/* ============================================ */}
+                <Route
+                    path="/superadmin"
+                    element={
+                        <SuperAdminProtectedRoute>
+                            <MasterLayout />
+                        </SuperAdminProtectedRoute>
+                    }
+                >
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<MasterDashboard />} />
+                    <Route path="organizations" element={<MasterOrganizations />} />
+                    <Route path="map" element={<MasterGlobalMap />} />
+                    <Route path="system" element={<MasterSystemHealth />} />
+                    <Route path="settings" element={<MasterSettings />} />
                 </Route>
 
                 {/* ============================================ */}
@@ -140,6 +189,7 @@ function App(): JSX.Element {
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="buses" element={<AdminBuses />} />
                     <Route path="drivers" element={<AdminDrivers />} />
+                    <Route path="organization" element={<AdminOrganization />} />
                     <Route path="settings" element={<AdminSettings />} />
                 </Route>
 
@@ -171,6 +221,7 @@ function App(): JSX.Element {
                 {/* 404 - Redirect to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            <PWAUpdater />
         </Suspense>
     );
 }

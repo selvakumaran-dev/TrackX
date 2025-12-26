@@ -1,10 +1,11 @@
 /**
- * Admin Settings - Change Password, Profile
+ * Admin Settings - Human-Centered Design
+ * Warm, professional profile and security management
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Save, AlertCircle, Check, Shield, User } from 'lucide-react';
+import { Lock, Save, AlertCircle, Check, Shield, User, Key } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -59,11 +60,11 @@ const AdminSettings: React.FC = () => {
     }, [message]);
 
     return (
-        <div className="space-y-6 max-w-2xl">
+        <div className="space-y-6 max-w-2xl mx-auto pb-10">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-white">Settings</h1>
-                <p className="text-dark-400 mt-1">Manage your account settings</p>
+                <h1 className="text-3xl font-bold text-[#1B4332]">Settings</h1>
+                <p className="text-[#74796D] mt-1">Manage your account and security</p>
             </div>
 
             {/* Toast Message */}
@@ -73,110 +74,124 @@ const AdminSettings: React.FC = () => {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className={`p-4 rounded-xl flex items-center gap-3 ${message.type === 'success'
-                            ? 'bg-secondary-500/20 border border-secondary-500/30 text-secondary-400'
-                            : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                        className={`p-4 rounded-xl flex items-center gap-3 shadow-lg ${message.type === 'success'
+                            ? 'bg-[#D8F3DC] border border-[#2D6A4F]/20 text-[#2D6A4F]'
+                            : 'bg-[#FFF1E6] border border-[#E07A5F]/20 text-[#E07A5F]'
                             }`}
                     >
                         {message.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                        {message.text}
+                        <span className="font-medium">{message.text}</span>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             {/* Profile Info Card */}
-            <div className="card">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                        <User className="w-7 h-7 text-white" />
+            <div className="bg-white rounded-2xl p-6 border border-[#E9ECEF] shadow-sm">
+                <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                    <div className="w-16 h-16 rounded-full bg-[#D8F3DC] flex items-center justify-center border-4 border-[#F8F9FA] flex-shrink-0">
+                        <User className="w-8 h-8 text-[#2D6A4F]" />
                     </div>
-                    <div>
-                        <h2 className="text-xl font-semibold text-white">{user?.name || 'Admin'}</h2>
-                        <p className="text-sm text-dark-400">{user?.email}</p>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-xl font-extrabold text-[#1B4332] truncate">{user?.name || 'Admin'}</h2>
+                        <p className="text-[#74796D] text-sm truncate">{user?.email}</p>
                     </div>
-                    <div className="ml-auto">
-                        <span className="px-3 py-1 rounded-full text-xs bg-primary-500/20 text-primary-400 border border-primary-500/30">
+                    <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                        <span className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-[#E8F4F8] text-[#457B9D] border border-[#457B9D]/10">
                             Administrator
                         </span>
                     </div>
                 </div>
             </div>
 
+
             {/* Change Password Card */}
-            <div className="card">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                        <Lock className="w-5 h-5 text-amber-400" />
+            <div className="bg-white rounded-2xl border border-[#E9ECEF] shadow-sm overflow-hidden">
+                <div className="bg-[#F8F9FA] px-6 py-4 border-b border-[#E9ECEF] flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#FFF1E6] flex items-center justify-center">
+                        <Key className="w-4 h-4 text-[#E07A5F]" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Change Password</h3>
-                        <p className="text-sm text-dark-500">Update your admin password</p>
+                        <h3 className="text-lg font-bold text-[#1B4332]">Change Password</h3>
+                        <p className="text-xs text-[#74796D]">Update your security credentials</p>
                     </div>
                 </div>
 
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                    <div>
-                        <label className="input-label">Current Password *</label>
-                        <input
-                            type="password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            className="input"
-                            required
-                        />
-                    </div>
+                <div className="p-6">
+                    <form onSubmit={handleChangePassword} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-[#1B4332] mb-2">Current Password *</label>
+                            <div className="relative">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#95A3A4]" />
+                                <input
+                                    type="password"
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                    className="w-full pl-11 pr-4 py-3 bg-white border-2 border-[#E9ECEF] rounded-xl text-[#1B4332] focus:outline-none focus:border-[#457B9D] transition-colors"
+                                    required
+                                />
+                            </div>
+                        </div>
 
-                    <div>
-                        <label className="input-label">New Password *</label>
-                        <input
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            className="input"
-                            required
-                            minLength={6}
-                        />
-                    </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label className="block text-sm font-medium text-[#1B4332] mb-2">New Password *</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#95A3A4]" />
+                                    <input
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        className="w-full pl-11 pr-4 py-3 bg-white border-2 border-[#E9ECEF] rounded-xl text-[#1B4332] focus:outline-none focus:border-[#457B9D] transition-colors"
+                                        required
+                                        minLength={6}
+                                    />
+                                </div>
+                            </div>
 
-                    <div>
-                        <label className="input-label">Confirm New Password *</label>
-                        <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="input"
-                            required
-                        />
-                    </div>
+                            <div>
+                                <label className="block text-sm font-medium text-[#1B4332] mb-2">Confirm Password *</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#95A3A4]" />
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        className="w-full pl-11 pr-4 py-3 bg-white border-2 border-[#E9ECEF] rounded-xl text-[#1B4332] focus:outline-none focus:border-[#457B9D] transition-colors"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="btn-primary w-full mt-4"
-                    >
-                        {saving ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                            <>
-                                <Save className="w-5 h-5" />
-                                Update Password
-                            </>
-                        )}
-                    </button>
-                </form>
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="w-full mt-2 bg-gradient-to-r from-[#E07A5F] to-[#F4A261] text-white font-bold text-lg py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:translate-y-0"
+                        >
+                            {saving ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <Save className="w-5 h-5" />
+                                    Update Password
+                                </>
+                            )}
+                        </button>
+                    </form>
+                </div>
             </div>
 
             {/* Security Info */}
-            <div className="card bg-dark-800/50">
+            <div className="bg-[#E8F4F8] rounded-xl p-5 border border-[#457B9D]/20">
                 <div className="flex items-start gap-3">
-                    <Shield className="w-5 h-5 text-primary-400 mt-0.5" />
+                    <Shield className="w-5 h-5 text-[#457B9D] mt-0.5" />
                     <div>
-                        <h4 className="font-medium text-white">Security Tips</h4>
-                        <ul className="mt-2 text-sm text-dark-400 space-y-1">
-                            <li>• Use a strong, unique password</li>
-                            <li>• Never share your password</li>
-                            <li>• Log out when using shared devices</li>
-                            <li>• Change your password regularly</li>
+                        <h4 className="font-bold text-[#1B4332]">Security Tips</h4>
+                        <ul className="mt-2 text-sm text-[#52796F] space-y-1">
+                            <li>• Use a strong, unique password with a mix of characters</li>
+                            <li>• Never share your password with anyone</li>
+                            <li>• Log out when using shared or public devices</li>
+                            <li>• Change your password every 3-6 months</li>
                         </ul>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 /**
- * Driver Profile - Ultra Mobile-First Premium Design
- * With working Edit Profile, Photo Upload, and Change Password
+ * Driver Profile - Human-Centered Design
+ * Warm, calming color palette
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -13,18 +13,12 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { apiUrl, isDev } from '../../config/env';
 import ImageCropper from '../../components/ImageCropper';
+import ConfirmModal from '../../components/common/ConfirmModal';
 
-// Helper to get full photo URL
-// In development, uploads are served from the backend server (port 3001)
-// In production, they're served from the API_URL
 const getPhotoUrl = (photoUrl: string | null | undefined): string | null => {
     if (!photoUrl) return null;
-    // If already absolute URL, return as-is
     if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl;
-    // In development, use localhost:3001 for uploads (bypasses Vite proxy issues)
-    // In production, use the configured API URL
-    const baseUrl = isDev ? 'http://localhost:3001' : apiUrl;
-    return `${baseUrl}${photoUrl}`;
+    return `${apiUrl}${photoUrl}`;
 };
 
 interface DriverData {
@@ -44,20 +38,18 @@ const DriverProfile: React.FC = () => {
     const [driver, setDriver] = useState<DriverData | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Modal states
     const [showEditModal, setShowEditModal] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-    // Form states
     const [editName, setEditName] = useState('');
     const [editPhone, setEditPhone] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    // Photo upload and cropper
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [showCropper, setShowCropper] = useState(false);
@@ -79,9 +71,7 @@ const DriverProfile: React.FC = () => {
     }, []);
 
     const handleLogout = async () => {
-        if (confirm('Are you sure you want to logout?')) {
-            await logout();
-        }
+        await logout();
     };
 
     const handlePhotoClick = () => {
@@ -92,27 +82,22 @@ const DriverProfile: React.FC = () => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             setMessage({ type: 'error', text: 'Please select an image file' });
             return;
         }
 
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
             setMessage({ type: 'error', text: 'Image must be less than 5MB' });
             return;
         }
 
-        // Read file and open cropper
         const reader = new FileReader();
         reader.onload = () => {
             setSelectedImage(reader.result as string);
             setShowCropper(true);
         };
         reader.readAsDataURL(file);
-
-        // Reset input so same file can be selected again
         e.target.value = '';
     };
 
@@ -176,10 +161,7 @@ const DriverProfile: React.FC = () => {
 
         setSaving(true);
         try {
-            await api.put('/driver/profile', {
-                currentPassword,
-                newPassword,
-            });
+            await api.put('/driver/profile', { currentPassword, newPassword });
 
             setShowPasswordModal(false);
             setCurrentPassword('');
@@ -193,7 +175,6 @@ const DriverProfile: React.FC = () => {
         setSaving(false);
     };
 
-    // Auto-hide messages
     useEffect(() => {
         if (message) {
             const timer = setTimeout(() => setMessage(null), 3000);
@@ -203,36 +184,24 @@ const DriverProfile: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-[100dvh] bg-slate-900 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="min-h-[100dvh] bg-[#FDFBF7] flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#2D6A4F] border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-[100dvh] bg-slate-900 pb-28">
-            <style>{`
-        .touch-btn{min-height:56px}
-        .safe-b{padding-bottom:max(112px,calc(112px + env(safe-area-inset-bottom)))}
-      `}</style>
+        <div className="min-h-[100dvh] bg-[#FDFBF7] pb-28">
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoChange} />
 
-            {/* Hidden file input */}
-            <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handlePhotoChange}
-            />
-
-            {/* Toast Message */}
+            {/* Toast */}
             <AnimatePresence>
                 {message && (
                     <motion.div
                         initial={{ opacity: 0, y: -50 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -50 }}
-                        className={`fixed top-4 left-4 right-4 z-50 p-4 rounded-2xl shadow-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'
+                        className={`fixed top-4 left-4 right-4 z-50 p-4 rounded-2xl shadow-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-[#2D6A4F]' : 'bg-[#E07A5F]'
                             }`}
                     >
                         <Check className="w-5 h-5 text-white" />
@@ -241,8 +210,8 @@ const DriverProfile: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Profile Header */}
-            <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 px-4 pt-8 pb-20 text-center">
+            {/* Header */}
+            <div className="bg-gradient-to-br from-[#2D6A4F] via-[#40916C] to-[#52B788] px-5 pt-8 pb-20 text-center">
                 <div className="relative inline-block mb-4">
                     <div className="w-28 h-28 rounded-full bg-white/20 backdrop-blur flex items-center justify-center mx-auto overflow-hidden border-4 border-white/30">
                         {uploadingPhoto ? (
@@ -256,122 +225,115 @@ const DriverProfile: React.FC = () => {
                     <button
                         onClick={handlePhotoClick}
                         disabled={uploadingPhoto}
-                        className="absolute bottom-0 right-0 w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center border-4 border-indigo-700 active:scale-95 transition-transform"
+                        className="absolute bottom-0 right-0 w-10 h-10 bg-[#E07A5F] rounded-full flex items-center justify-center border-4 border-[#40916C] active:scale-95 transition-transform"
                     >
                         <Camera className="w-4 h-4 text-white" />
                     </button>
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-1">{driver?.name || 'Driver'}</h1>
-                <p className="text-indigo-200 text-sm">{driver?.email}</p>
+                <p className="text-white/80 text-sm">{driver?.email}</p>
             </div>
 
-            {/* Bus Card - Overlapping */}
+            {/* Bus Card */}
             {driver?.bus && (
-                <div className="px-4 -mt-10 relative z-10">
+                <div className="px-5 -mt-10 relative z-10">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-slate-800 rounded-2xl p-5 shadow-xl border border-slate-700">
+                        className="bg-white rounded-2xl p-5 shadow-lg border border-[#E9ECEF]">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-indigo-500/20 rounded-2xl flex items-center justify-center">
-                                <Bus className="w-8 h-8 text-indigo-400" />
+                            <div className="w-16 h-16 bg-[#D8F3DC] rounded-2xl flex items-center justify-center">
+                                <Bus className="w-8 h-8 text-[#2D6A4F]" />
                             </div>
                             <div className="flex-1">
-                                <p className="text-xs text-slate-500 uppercase font-medium">Assigned Bus</p>
-                                <p className="text-xl font-bold text-white">{driver.bus.busNumber}</p>
-                                <p className="text-sm text-slate-400">{driver.bus.busName}</p>
+                                <p className="text-xs text-[#74796D] uppercase font-medium">Assigned Bus</p>
+                                <p className="text-xl font-bold text-[#1B4332]">{driver.bus.busNumber}</p>
+                                <p className="text-sm text-[#52796F]">{driver.bus.busName}</p>
                             </div>
-                            <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                            <div className="w-3 h-3 bg-[#40916C] rounded-full animate-pulse" />
                         </div>
                     </motion.div>
                 </div>
             )}
 
-            {/* Menu Items */}
-            <div className="px-4 mt-6 space-y-3">
-                <p className="text-xs text-slate-500 uppercase font-semibold px-2 mb-2">Account</p>
+            {/* Menu */}
+            <div className="px-5 mt-6 space-y-3">
+                <p className="text-xs text-[#74796D] uppercase font-semibold px-2 mb-2">Account</p>
 
-                <button
-                    onClick={() => setShowEditModal(true)}
-                    className="w-full bg-slate-800 rounded-2xl p-4 flex items-center gap-4 active:bg-slate-700 touch-btn"
-                >
-                    <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                        <User className="w-5 h-5 text-blue-400" />
+                <button onClick={() => setShowEditModal(true)} className="w-full bg-white rounded-2xl p-4 flex items-center gap-4 active:bg-[#F8F9FA] border border-[#E9ECEF] shadow-sm">
+                    <div className="w-12 h-12 bg-[#E8F4F8] rounded-xl flex items-center justify-center">
+                        <User className="w-5 h-5 text-[#457B9D]" />
                     </div>
                     <div className="flex-1 text-left">
-                        <p className="text-white font-medium">Edit Profile</p>
-                        <p className="text-xs text-slate-500">Update your information</p>
+                        <p className="text-[#1B4332] font-medium">Edit Profile</p>
+                        <p className="text-xs text-[#74796D]">Update your information</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500" />
+                    <ChevronRight className="w-5 h-5 text-[#95A3A4]" />
                 </button>
 
-                <div className="w-full bg-slate-800 rounded-2xl p-4 flex items-center gap-4 touch-btn">
-                    <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                        <Phone className="w-5 h-5 text-emerald-400" />
+                <div className="w-full bg-white rounded-2xl p-4 flex items-center gap-4 border border-[#E9ECEF] shadow-sm">
+                    <div className="w-12 h-12 bg-[#D8F3DC] rounded-xl flex items-center justify-center">
+                        <Phone className="w-5 h-5 text-[#2D6A4F]" />
                     </div>
                     <div className="flex-1 text-left">
-                        <p className="text-white font-medium">Phone Number</p>
-                        <p className="text-xs text-slate-500">{driver?.phone || 'Not set'}</p>
+                        <p className="text-[#1B4332] font-medium">Phone Number</p>
+                        <p className="text-xs text-[#74796D]">{driver?.phone || 'Not set'}</p>
                     </div>
                 </div>
 
-                <button
-                    onClick={() => setShowPasswordModal(true)}
-                    className="w-full bg-slate-800 rounded-2xl p-4 flex items-center gap-4 active:bg-slate-700 touch-btn"
-                >
-                    <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center">
-                        <Lock className="w-5 h-5 text-amber-400" />
+                <button onClick={() => setShowPasswordModal(true)} className="w-full bg-white rounded-2xl p-4 flex items-center gap-4 active:bg-[#F8F9FA] border border-[#E9ECEF] shadow-sm">
+                    <div className="w-12 h-12 bg-[#FFF1E6] rounded-xl flex items-center justify-center">
+                        <Lock className="w-5 h-5 text-[#E07A5F]" />
                     </div>
                     <div className="flex-1 text-left">
-                        <p className="text-white font-medium">Change Password</p>
-                        <p className="text-xs text-slate-500">Update your password</p>
+                        <p className="text-[#1B4332] font-medium">Change Password</p>
+                        <p className="text-xs text-[#74796D]">Update your password</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500" />
+                    <ChevronRight className="w-5 h-5 text-[#95A3A4]" />
                 </button>
 
-                <p className="text-xs text-slate-500 uppercase font-semibold px-2 mt-6 mb-2">Preferences</p>
+                <p className="text-xs text-[#74796D] uppercase font-semibold px-2 mt-6 mb-2">Preferences</p>
 
-                <button className="w-full bg-slate-800 rounded-2xl p-4 flex items-center gap-4 active:bg-slate-700 touch-btn">
-                    <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                        <Bell className="w-5 h-5 text-purple-400" />
+                <button className="w-full bg-white rounded-2xl p-4 flex items-center gap-4 active:bg-[#F8F9FA] border border-[#E9ECEF] shadow-sm">
+                    <div className="w-12 h-12 bg-[#F3E8FF] rounded-xl flex items-center justify-center">
+                        <Bell className="w-5 h-5 text-[#8B5CF6]" />
                     </div>
                     <div className="flex-1 text-left">
-                        <p className="text-white font-medium">Notifications</p>
-                        <p className="text-xs text-slate-500">Manage alerts</p>
+                        <p className="text-[#1B4332] font-medium">Notifications</p>
+                        <p className="text-xs text-[#74796D]">Manage alerts</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500" />
+                    <ChevronRight className="w-5 h-5 text-[#95A3A4]" />
                 </button>
 
-                <button className="w-full bg-slate-800 rounded-2xl p-4 flex items-center gap-4 active:bg-slate-700 touch-btn">
-                    <div className="w-12 h-12 bg-slate-500/20 rounded-xl flex items-center justify-center">
-                        <HelpCircle className="w-5 h-5 text-slate-400" />
+                <button className="w-full bg-white rounded-2xl p-4 flex items-center gap-4 active:bg-[#F8F9FA] border border-[#E9ECEF] shadow-sm">
+                    <div className="w-12 h-12 bg-[#F8F9FA] rounded-xl flex items-center justify-center">
+                        <HelpCircle className="w-5 h-5 text-[#74796D]" />
                     </div>
                     <div className="flex-1 text-left">
-                        <p className="text-white font-medium">Help & Support</p>
-                        <p className="text-xs text-slate-500">Get assistance</p>
+                        <p className="text-[#1B4332] font-medium">Help & Support</p>
+                        <p className="text-xs text-[#74796D]">Get assistance</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500" />
+                    <ChevronRight className="w-5 h-5 text-[#95A3A4]" />
                 </button>
 
-                {/* Logout Button */}
-                <motion.button onClick={handleLogout} whileTap={{ scale: 0.98 }}
-                    className="w-full bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-4 mt-6 touch-btn">
-                    <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
-                        <LogOut className="w-5 h-5 text-red-400" />
+                {/* Logout */}
+                <motion.button onClick={() => setShowLogoutConfirm(true)} whileTap={{ scale: 0.98 }}
+                    className="w-full bg-[#FFF1E6] border border-[#E07A5F]/20 rounded-2xl p-4 flex items-center gap-4 mt-6">
+                    <div className="w-12 h-12 bg-[#E07A5F]/10 rounded-xl flex items-center justify-center">
+                        <LogOut className="w-5 h-5 text-[#E07A5F]" />
                     </div>
-                    <p className="text-red-400 font-medium">Logout</p>
+                    <p className="text-[#E07A5F] font-medium">Logout</p>
                 </motion.button>
 
-                {/* App Version */}
-                <p className="text-center text-slate-600 text-xs mt-6">TrackX Driver v1.0.0</p>
+                <p className="text-center text-[#95A3A4] text-xs mt-6">TrackX Driver v1.0.0</p>
             </div>
 
-            {/* Edit Profile Modal */}
+            {/* Edit Modal */}
             <AnimatePresence>
                 {showEditModal && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4"
+                        className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4"
                         onClick={() => setShowEditModal(false)}
                     >
                         <motion.div
@@ -379,32 +341,32 @@ const DriverProfile: React.FC = () => {
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 100, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full max-w-md bg-slate-800 rounded-3xl p-6"
+                            className="w-full max-w-md bg-white rounded-3xl p-6"
                         >
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-white">Edit Profile</h2>
-                                <button onClick={() => setShowEditModal(false)} className="p-2 rounded-full bg-slate-700">
-                                    <X className="w-5 h-5 text-slate-400" />
+                                <h2 className="text-xl font-bold text-[#1B4332]">Edit Profile</h2>
+                                <button onClick={() => setShowEditModal(false)} className="p-2 rounded-full bg-[#F8F9FA]">
+                                    <X className="w-5 h-5 text-[#74796D]" />
                                 </button>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-sm text-slate-400 mb-1 block">Name</label>
+                                    <label className="text-sm text-[#74796D] mb-1 block">Name</label>
                                     <input
                                         type="text"
                                         value={editName}
                                         onChange={(e) => setEditName(e.target.value)}
-                                        className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+                                        className="w-full bg-[#F8F9FA] border-2 border-[#E9ECEF] rounded-xl px-4 py-3 text-[#1B4332] focus:outline-none focus:border-[#2D6A4F]"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm text-slate-400 mb-1 block">Phone</label>
+                                    <label className="text-sm text-[#74796D] mb-1 block">Phone</label>
                                     <input
                                         type="tel"
                                         value={editPhone}
                                         onChange={(e) => setEditPhone(e.target.value)}
-                                        className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+                                        className="w-full bg-[#F8F9FA] border-2 border-[#E9ECEF] rounded-xl px-4 py-3 text-[#1B4332] focus:outline-none focus:border-[#2D6A4F]"
                                     />
                                 </div>
                             </div>
@@ -412,7 +374,7 @@ const DriverProfile: React.FC = () => {
                             <button
                                 onClick={handleEditProfile}
                                 disabled={saving}
-                                className="w-full mt-6 bg-indigo-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                                className="w-full mt-6 bg-gradient-to-r from-[#2D6A4F] to-[#40916C] text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                                 {saving ? (
                                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -428,14 +390,14 @@ const DriverProfile: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Change Password Modal */}
+            {/* Password Modal */}
             <AnimatePresence>
                 {showPasswordModal && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4"
+                        className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4"
                         onClick={() => setShowPasswordModal(false)}
                     >
                         <motion.div
@@ -443,41 +405,41 @@ const DriverProfile: React.FC = () => {
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 100, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full max-w-md bg-slate-800 rounded-3xl p-6"
+                            className="w-full max-w-md bg-white rounded-3xl p-6"
                         >
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-white">Change Password</h2>
-                                <button onClick={() => setShowPasswordModal(false)} className="p-2 rounded-full bg-slate-700">
-                                    <X className="w-5 h-5 text-slate-400" />
+                                <h2 className="text-xl font-bold text-[#1B4332]">Change Password</h2>
+                                <button onClick={() => setShowPasswordModal(false)} className="p-2 rounded-full bg-[#F8F9FA]">
+                                    <X className="w-5 h-5 text-[#74796D]" />
                                 </button>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-sm text-slate-400 mb-1 block">Current Password</label>
+                                    <label className="text-sm text-[#74796D] mb-1 block">Current Password</label>
                                     <input
                                         type="password"
                                         value={currentPassword}
                                         onChange={(e) => setCurrentPassword(e.target.value)}
-                                        className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+                                        className="w-full bg-[#F8F9FA] border-2 border-[#E9ECEF] rounded-xl px-4 py-3 text-[#1B4332] focus:outline-none focus:border-[#E07A5F]"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm text-slate-400 mb-1 block">New Password</label>
+                                    <label className="text-sm text-[#74796D] mb-1 block">New Password</label>
                                     <input
                                         type="password"
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
-                                        className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+                                        className="w-full bg-[#F8F9FA] border-2 border-[#E9ECEF] rounded-xl px-4 py-3 text-[#1B4332] focus:outline-none focus:border-[#E07A5F]"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm text-slate-400 mb-1 block">Confirm Password</label>
+                                    <label className="text-sm text-[#74796D] mb-1 block">Confirm Password</label>
                                     <input
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+                                        className="w-full bg-[#F8F9FA] border-2 border-[#E9ECEF] rounded-xl px-4 py-3 text-[#1B4332] focus:outline-none focus:border-[#E07A5F]"
                                     />
                                 </div>
                             </div>
@@ -485,7 +447,7 @@ const DriverProfile: React.FC = () => {
                             <button
                                 onClick={handleChangePassword}
                                 disabled={saving}
-                                className="w-full mt-6 bg-amber-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                                className="w-full mt-6 bg-gradient-to-r from-[#E07A5F] to-[#F4A261] text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                                 {saving ? (
                                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -501,16 +463,25 @@ const DriverProfile: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Image Cropper Modal */}
+            {/* Image Cropper */}
             <ImageCropper
                 isOpen={showCropper}
                 imageSrc={selectedImage}
-                onClose={() => {
-                    setShowCropper(false);
-                    setSelectedImage('');
-                }}
+                onClose={() => { setShowCropper(false); setSelectedImage(''); }}
                 onCropComplete={handleCropComplete}
                 aspectRatio={1}
+            />
+
+            {/* Logout Confirm Modal */}
+            <ConfirmModal
+                isOpen={showLogoutConfirm}
+                onClose={() => setShowLogoutConfirm(false)}
+                onConfirm={handleLogout}
+                title="Logout Account"
+                message="Are you sure you want to log out from your driver session?"
+                confirmText="Logout"
+                cancelText="Stay logged in"
+                type="danger"
             />
         </div>
     );

@@ -13,7 +13,7 @@ import { prisma } from '../config/database.js';
 
 /**
  * Authenticate JWT token from Authorization header
- * Adds user info to req.user
+ * Adds user info to req.user including organization
  */
 export async function authenticate(req, res, next) {
     try {
@@ -34,11 +34,57 @@ export async function authenticate(req, res, next) {
         // Verify token
         const decoded = jwt.verify(token, jwtConfig.accessToken.secret);
 
-        req.user = {
-            id: decoded.userId,
-            type: decoded.userType, // 'ADMIN' or 'DRIVER'
-            email: decoded.email,
-        };
+        // Fetch full user data with organization
+        if (decoded.userType === 'ADMIN') {
+            const admin = await prisma.admin.findUnique({
+                where: { id: decoded.userId },
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    role: true,
+                    organizationId: true,
+                    organization: {
+                        select: {
+                            id: true,
+                            name: true,
+                            code: true,
+                            isActive: true,
+                        },
+                    },
+                },
+            });
+
+            if (!admin) {
+                throw new ApiError(401, 'User not found');
+            }
+
+            // Verify organization existence and status
+            if (admin.role !== 'SUPER_ADMIN') {
+                if (!admin.organization) {
+                    throw new ApiError(401, 'Organization not found or has been removed');
+                }
+                if (!admin.organization.isActive) {
+                    throw new ApiError(403, 'Your organization account has been deactivated');
+                }
+            }
+
+            req.user = {
+                id: admin.id,
+                type: 'ADMIN',
+                email: admin.email,
+                name: admin.name,
+                role: admin.role,
+                organizationId: admin.organizationId,
+                organization: admin.organization,
+            };
+        } else {
+            req.user = {
+                id: decoded.userId,
+                type: decoded.userType,
+                email: decoded.email,
+            };
+        }
 
         next();
     } catch (error) {
@@ -65,6 +111,25 @@ export function requireAdmin(req, res, next) {
 }
 
 /**
+ * Require specific role(s)
+ * @param {...string} roles - Allowed roles (e.g., 'SUPER_ADMIN', 'ORG_ADMIN')
+ */
+export function requireRole(...roles) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return next(new ApiError(401, 'Authentication required'));
+        }
+        if (!roles.includes(req.user.role)) {
+            return next(new ApiError(403, `Required role: ${roles.join(' or ')}`));
+        }
+        next();
+    };
+}
+
+// Alias for cleaner imports
+export const authMiddleware = authenticate;
+
+/**
  * Require driver role
  */
 export function requireDriver(req, res, next) {
@@ -81,17 +146,25 @@ export function requireDriver(req, res, next) {
 export async function authenticateBusApiKey(req, res, next) {
     try {
         const authHeader = req.headers.authorization;
+        const bodyGpsDeviceId = req.body?.gpsDeviceId;
 
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            throw new ApiError(401, 'API key required');
+        if (!authHeader && !bodyGpsDeviceId) {
+            throw new ApiError(401, 'Authentication required (API Key or Device ID)');
         }
 
-        const apiKey = authHeader.split(' ')[1];
+        const apiKey = authHeader ? authHeader.split(' ')[1] : null;
 
-        // Find bus by API key
+        if (!apiKey && !bodyGpsDeviceId) {
+            throw new ApiError(401, 'API key or GPS Device ID required');
+        }
+
+        // Find bus by API key or GPS Device ID
         const bus = await prisma.bus.findFirst({
             where: {
-                apiKey: apiKey,
+                OR: [
+                    apiKey ? { apiKey: apiKey } : null,
+                    bodyGpsDeviceId ? { gpsDeviceId: bodyGpsDeviceId } : null
+                ].filter(Boolean),
                 isActive: true
             },
             include: {
@@ -106,7 +179,7 @@ export async function authenticateBusApiKey(req, res, next) {
         });
 
         if (!bus) {
-            throw new ApiError(401, 'Invalid API key');
+            throw new ApiError(401, apiKey ? 'Invalid API key' : 'Invalid GPS Device ID');
         }
 
         req.bus = bus;

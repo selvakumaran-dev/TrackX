@@ -37,7 +37,7 @@ router.use(requireAdmin);
  */
 router.get('/dashboard', async (req, res, next) => {
     try {
-        const stats = await GpsService.getDashboardStats();
+        const stats = await GpsService.getDashboardStats(req.user.organizationId);
 
         res.json({
             success: true,
@@ -54,7 +54,7 @@ router.get('/dashboard', async (req, res, next) => {
  */
 router.get('/dashboard/buses', async (req, res, next) => {
     try {
-        const buses = await GpsService.getBusStatusList();
+        const buses = await GpsService.getBusStatusList(req.user.organizationId);
 
         res.json({
             success: true,
@@ -137,11 +137,20 @@ router.put('/profile/password', async (req, res, next) => {
 
 /**
  * GET /api/admin/buses
- * Get all buses with pagination
+ * Get all buses with pagination (scoped by organization)
  */
 router.get('/buses', validateQuery(paginationSchema), async (req, res, next) => {
     try {
-        const result = await BusService.getAllBuses(req.query);
+        console.log('DEBUG: GET /admin/buses');
+        console.log('User Org ID:', req.user.organizationId);
+        console.log('Query:', req.query);
+
+        const result = await BusService.getAllBuses({
+            ...req.query,
+            organizationId: req.user.organizationId,
+        });
+
+        console.log('Found buses:', result.data.length);
 
         res.json({
             success: true,
@@ -158,7 +167,7 @@ router.get('/buses', validateQuery(paginationSchema), async (req, res, next) => 
  */
 router.get('/buses/:id', async (req, res, next) => {
     try {
-        const bus = await BusService.getBusById(req.params.id);
+        const bus = await BusService.getBusById(req.params.id, req.user.organizationId);
 
         res.json({
             success: true,
@@ -171,11 +180,11 @@ router.get('/buses/:id', async (req, res, next) => {
 
 /**
  * POST /api/admin/buses
- * Create a new bus
+ * Create a new bus (assigned to admin's organization)
  */
 router.post('/buses', validate(createBusSchema), async (req, res, next) => {
     try {
-        const bus = await BusService.createBus(req.body);
+        const bus = await BusService.createBus(req.body, req.user.organizationId);
 
         res.status(201).json({
             success: true,
@@ -193,7 +202,7 @@ router.post('/buses', validate(createBusSchema), async (req, res, next) => {
  */
 router.put('/buses/:id', validate(updateBusSchema), async (req, res, next) => {
     try {
-        const bus = await BusService.updateBus(req.params.id, req.body);
+        const bus = await BusService.updateBus(req.params.id, req.body, req.user.organizationId);
 
         res.json({
             success: true,
@@ -211,7 +220,7 @@ router.put('/buses/:id', validate(updateBusSchema), async (req, res, next) => {
  */
 router.delete('/buses/:id', async (req, res, next) => {
     try {
-        await BusService.deleteBus(req.params.id);
+        await BusService.deleteBus(req.params.id, req.user.organizationId);
 
         res.json({
             success: true,
@@ -228,7 +237,7 @@ router.delete('/buses/:id', async (req, res, next) => {
  */
 router.post('/buses/:id/generate-api-key', async (req, res, next) => {
     try {
-        const result = await BusService.generateBusApiKey(req.params.id);
+        const result = await BusService.generateBusApiKey(req.params.id, req.user.organizationId);
 
         res.json({
             success: true,
@@ -246,7 +255,7 @@ router.post('/buses/:id/generate-api-key', async (req, res, next) => {
  */
 router.delete('/buses/:id/revoke-api-key', async (req, res, next) => {
     try {
-        await BusService.revokeBusApiKey(req.params.id);
+        await BusService.revokeBusApiKey(req.params.id, req.user.organizationId);
 
         res.json({
             success: true,
@@ -268,7 +277,7 @@ router.delete('/buses/:id/revoke-api-key', async (req, res, next) => {
 router.put('/buses/:id/stops', async (req, res, next) => {
     try {
         const { stops } = req.body;
-        const bus = await BusService.updateBusStops(req.params.id, stops || []);
+        const bus = await BusService.updateBusStops(req.params.id, stops || [], req.user.organizationId);
 
         res.json({
             success: true,
@@ -286,7 +295,7 @@ router.put('/buses/:id/stops', async (req, res, next) => {
  */
 router.post('/buses/:id/stops', async (req, res, next) => {
     try {
-        const stop = await BusService.addBusStop(req.params.id, req.body);
+        const stop = await BusService.addBusStop(req.params.id, req.body, req.user.organizationId);
 
         res.status(201).json({
             success: true,
@@ -304,7 +313,7 @@ router.post('/buses/:id/stops', async (req, res, next) => {
  */
 router.delete('/stops/:stopId', async (req, res, next) => {
     try {
-        await BusService.deleteBusStop(req.params.stopId);
+        await BusService.deleteBusStop(req.params.stopId, req.user.organizationId);
 
         res.json({
             success: true,
@@ -325,7 +334,10 @@ router.delete('/stops/:stopId', async (req, res, next) => {
  */
 router.get('/drivers', validateQuery(paginationSchema), async (req, res, next) => {
     try {
-        const result = await DriverService.getAllDrivers(req.query);
+        const result = await DriverService.getAllDrivers({
+            ...req.query,
+            organizationId: req.user.organizationId,
+        });
 
         res.json({
             success: true,
@@ -342,7 +354,7 @@ router.get('/drivers', validateQuery(paginationSchema), async (req, res, next) =
  */
 router.get('/drivers/available', async (req, res, next) => {
     try {
-        const drivers = await DriverService.getAvailableDrivers();
+        const drivers = await DriverService.getAvailableDrivers(req.user.organizationId);
 
         res.json({
             success: true,
@@ -359,7 +371,7 @@ router.get('/drivers/available', async (req, res, next) => {
  */
 router.get('/drivers/:id', async (req, res, next) => {
     try {
-        const driver = await DriverService.getDriverById(req.params.id);
+        const driver = await DriverService.getDriverById(req.params.id, req.user.organizationId);
 
         res.json({
             success: true,
@@ -376,7 +388,10 @@ router.get('/drivers/:id', async (req, res, next) => {
  */
 router.post('/drivers', validate(createDriverSchema), async (req, res, next) => {
     try {
-        const driver = await DriverService.createDriver(req.body);
+        const driver = await DriverService.createDriver({
+            ...req.body,
+            organizationId: req.user.organizationId,
+        });
 
         res.status(201).json({
             success: true,
@@ -394,7 +409,7 @@ router.post('/drivers', validate(createDriverSchema), async (req, res, next) => 
  */
 router.put('/drivers/:id', validate(updateDriverSchema), async (req, res, next) => {
     try {
-        const driver = await DriverService.updateDriver(req.params.id, req.body);
+        const driver = await DriverService.updateDriver(req.params.id, req.body, req.user.organizationId);
 
         res.json({
             success: true,
@@ -420,7 +435,7 @@ router.post('/drivers/:id/photo', upload.single('photo'), async (req, res, next)
         }
 
         const photoUrl = `/uploads/drivers/${req.file.filename}`;
-        const driver = await DriverService.updateDriverPhoto(req.params.id, photoUrl);
+        const driver = await DriverService.updateDriverPhoto(req.params.id, photoUrl, req.user.organizationId);
 
         res.json({
             success: true,
@@ -438,7 +453,7 @@ router.post('/drivers/:id/photo', upload.single('photo'), async (req, res, next)
  */
 router.delete('/drivers/:id', async (req, res, next) => {
     try {
-        await DriverService.deleteDriver(req.params.id);
+        await DriverService.deleteDriver(req.params.id, req.user.organizationId);
 
         res.json({
             success: true,

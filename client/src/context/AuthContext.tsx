@@ -15,7 +15,7 @@ import type { User } from '../types';
 
 // Auth context types
 interface AuthUser extends User {
-    type: 'ADMIN' | 'DRIVER';
+    type: 'SUPER_ADMIN' | 'ADMIN' | 'DRIVER';
 }
 
 interface LoginResult {
@@ -28,8 +28,9 @@ interface AuthContextType {
     loading: boolean;
     isAuthenticated: boolean;
     isAdmin: boolean;
+    isSuperAdmin: boolean;
     isDriver: boolean;
-    login: (email: string, password: string, userType?: 'ADMIN' | 'DRIVER') => Promise<LoginResult>;
+    login: (email: string, password: string, userType?: 'SUPER_ADMIN' | 'ADMIN' | 'DRIVER') => Promise<LoginResult>;
     logout: () => Promise<void>;
     refreshAccessToken: () => Promise<string>;
     setUser: React.Dispatch<React.SetStateAction<AuthUser | null>>;
@@ -38,20 +39,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 // Storage key prefixes - completely separate for admin and driver
+const MASTER_TOKEN_KEY = 'trackx_master_token';
+const MASTER_REFRESH_KEY = 'trackx_master_refresh';
 const ADMIN_TOKEN_KEY = 'trackx_admin_token';
 const ADMIN_REFRESH_KEY = 'trackx_admin_refresh';
 const DRIVER_TOKEN_KEY = 'trackx_driver_token';
 const DRIVER_REFRESH_KEY = 'trackx_driver_refresh';
 
 // Get the current context (admin or driver) based on URL
-const getContextFromPath = (pathname: string): 'ADMIN' | 'DRIVER' | null => {
+const getContextFromPath = (pathname: string): 'SUPER_ADMIN' | 'ADMIN' | 'DRIVER' | null => {
+    if (pathname.startsWith('/superadmin') || pathname.startsWith('/master/access')) return 'SUPER_ADMIN';
     if (pathname.startsWith('/admin')) return 'ADMIN';
     if (pathname.startsWith('/driver')) return 'DRIVER';
     return null;
 };
 
 // Get storage keys for a user type
-const getStorageKeys = (userType: 'ADMIN' | 'DRIVER') => {
+const getStorageKeys = (userType: 'SUPER_ADMIN' | 'ADMIN' | 'DRIVER') => {
+    if (userType === 'SUPER_ADMIN') {
+        return { token: MASTER_TOKEN_KEY, refresh: MASTER_REFRESH_KEY };
+    }
     if (userType === 'ADMIN') {
         return { token: ADMIN_TOKEN_KEY, refresh: ADMIN_REFRESH_KEY };
     }
@@ -96,9 +103,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 const response = await api.get('/auth/me');
                 const userData = response.data.data;
 
+                // Map ADMIN role to SUPER_ADMIN type if appropriate
+                const effectiveType = (userData.type === 'ADMIN' && userData.role === 'SUPER_ADMIN' && contextType === 'SUPER_ADMIN')
+                    ? 'SUPER_ADMIN'
+                    : userData.type;
+
                 // Verify user type matches context
-                if (userData.type === contextType) {
-                    setUser({ ...userData, type: contextType });
+                if (effectiveType === contextType) {
+                    setUser({ ...userData, type: effectiveType });
                 } else {
                     // Mismatch - clear this context's tokens
                     localStorage.removeItem(keys.token);
@@ -117,6 +129,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
             setLoading(false);
         };
 
+        // Don't re-init if we already have a user and we're moving between matched context paths
+        const contextType = getContextFromPath(location.pathname);
+        if (user && user.type === contextType) {
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         initAuth();
     }, [location.pathname]);
@@ -125,13 +144,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const login = useCallback(async (
         email: string,
         password: string,
-        userType: 'ADMIN' | 'DRIVER' = 'ADMIN'
+        userType: 'SUPER_ADMIN' | 'ADMIN' | 'DRIVER' = 'ADMIN'
     ): Promise<LoginResult> => {
         try {
+            // Map SUPER_ADMIN back to ADMIN for API compatibility
+            const apiUserType = userType === 'SUPER_ADMIN' ? 'ADMIN' : userType;
+
             const response = await api.post('/auth/login', {
                 email,
                 password,
-                userType,
+                userType: apiUserType,
             });
 
             const { user: userData, accessToken, refreshToken } = response.data.data;
@@ -143,12 +165,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             // Also set general token for API
             localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', refreshToken);
+            if (refreshToken) {
+                localStorage.setItem('refreshToken', refreshToken);
+            }
 
-            setUser({ ...userData, type: userType });
+            // Important: Set the correct type in the user object for navigation logic
+            const effectiveUserType = (userData.type === 'ADMIN' && userData.role === 'SUPER_ADMIN')
+                ? 'SUPER_ADMIN'
+                : userData.type;
+
+            setUser({ ...userData, type: effectiveUserType });
 
             // Navigate to appropriate dashboard
-            if (userType === 'ADMIN') {
+            if (effectiveUserType === 'SUPER_ADMIN') {
+                navigate('/superadmin/dashboard');
+            } else if (effectiveUserType === 'ADMIN') {
                 navigate('/admin/dashboard');
             } else {
                 navigate('/driver/home');
@@ -183,10 +214,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
             setUser(null);
 
             // Navigate to login for this context
-            if (userType === 'DRIVER') {
-                navigate('/driver/login');
+            if (userType === 'SUPER_ADMIN') {
+                navigate('/master/access');
+            } else if (userType === 'ADMIN') {
+                if (location.pathname.startsWith('/superadmin') || location.pathname === '/master/access') {
+                    navigate('/master/access');
+                } else {
+                    navigate('/admin/login');
+                }
             } else {
-                navigate('/admin/login');
+                navigate('/driver/login');
             }
         }
     }, [navigate, user, location.pathname]);
@@ -203,10 +240,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             const response = await api.post('/auth/refresh', { refreshToken });
-            const { accessToken } = response.data.data;
+            const { accessToken, refreshToken: newRefreshToken } = response.data.data;
 
             localStorage.setItem(keys.token, accessToken);
             localStorage.setItem('accessToken', accessToken);
+
+            if (newRefreshToken) {
+                localStorage.setItem(keys.refresh, newRefreshToken);
+                localStorage.setItem('refreshToken', newRefreshToken);
+            }
 
             return accessToken;
         } catch (error) {
@@ -220,6 +262,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         loading,
         isAuthenticated: !!user,
         isAdmin: user?.type === 'ADMIN',
+        isSuperAdmin: user?.type === 'SUPER_ADMIN',
         isDriver: user?.type === 'DRIVER',
         login,
         logout,

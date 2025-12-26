@@ -10,6 +10,10 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { jwtConfig } from '../config/jwt.js';
 import { getBusLocation, getAllBusLocations } from '../config/redis.js';
+import { isOnline } from '../utils/helpers.js';
+
+// Match service threshold
+const OFFLINE_THRESHOLD = parseInt(process.env.GPS_OFFLINE_THRESHOLD_SECONDS) || 30;
 
 let io = null;
 
@@ -70,15 +74,13 @@ export function initializeSocket(httpServer) {
         // ========================================
         // Join Bus Tracking Room - Optimized
         // ========================================
-        socket.on('join-bus', async (busNumber) => {
-            if (!busNumber || typeof busNumber !== 'string') {
-                socket.emit('error', { message: 'Valid bus number required' });
+        socket.on('join-bus', async (busId) => {
+            if (!busId || typeof busId !== 'string') {
+                socket.emit('error', { message: 'Valid bus ID required' });
                 return;
             }
 
-            // Sanitize bus number
-            const sanitizedBus = busNumber.trim().toUpperCase().slice(0, 20);
-            const roomName = `bus-${sanitizedBus}`;
+            const roomName = `bus-${busId}`;
 
             // Leave any previous bus rooms first
             for (const room of socket.rooms) {
@@ -88,7 +90,7 @@ export function initializeSocket(httpServer) {
             }
 
             socket.join(roomName);
-            socket.data.busNumber = sanitizedBus;
+            socket.data.busId = busId;
 
             // Track room stats
             const roomSize = io.sockets.adapter.rooms.get(roomName)?.size || 0;
@@ -97,9 +99,12 @@ export function initializeSocket(httpServer) {
 
             // Send initial location data
             try {
-                const location = await getBusLocation(sanitizedBus);
+                const location = await getBusLocation(busId);
+                if (location) {
+                    location.isOnline = isOnline(location.updatedAt, OFFLINE_THRESHOLD);
+                }
                 socket.emit('location-update', location || {
-                    busNumber: sanitizedBus,
+                    busId: busId,
                     lat: null,
                     lon: null,
                     isOnline: false,
@@ -112,32 +117,48 @@ export function initializeSocket(httpServer) {
         // ========================================
         // Leave Bus Tracking Room
         // ========================================
-        socket.on('leave-bus', (busNumber) => {
-            if (!busNumber) return;
-            const roomName = `bus-${busNumber.toString().trim().toUpperCase()}`;
+        socket.on('leave-bus', (busId) => {
+            if (!busId) return;
+            const roomName = `bus-${busId}`;
             socket.leave(roomName);
-            socket.data.busNumber = null;
+            socket.data.busId = null;
         });
 
         // ========================================
-        // Join Admin Dashboard Room
+        // Join Admin Dashboard Room - Scoped by Organization
         // ========================================
         socket.on('join-admin-dashboard', async (token) => {
             try {
-                if (token) {
-                    const decoded = jwt.verify(token, jwtConfig.accessToken.secret);
-                    if (decoded.userType !== 'ADMIN') {
-                        socket.emit('error', { message: 'Admin access required' });
-                        return;
-                    }
+                if (!token) {
+                    socket.emit('error', { message: 'Authentication token required' });
+                    return;
                 }
 
-                socket.join('admin-dashboard');
+                const decoded = jwt.verify(token, jwtConfig.accessToken.secret);
+                if (decoded.userType !== 'ADMIN') {
+                    socket.emit('error', { message: 'Admin access required' });
+                    return;
+                }
 
-                // Send initial data for all buses (throttled for large datasets)
+                const organizationId = decoded.organizationId;
+                if (!organizationId) {
+                    socket.emit('error', { message: 'Organization ID not found in token' });
+                    return;
+                }
+
+                const roomName = `admin-dashboard-${organizationId}`;
+                socket.join(roomName);
+                socket.data.organizationId = organizationId;
+
+                console.log(`👨‍💼 Admin joined room: ${roomName}`);
+
+                // Send initial data for all buses in this organization
                 const allLocations = await getAllBusLocations();
-                socket.emit('all-bus-locations', allLocations);
+                const filteredLocations = allLocations.filter(loc => loc.organizationId === organizationId);
+
+                socket.emit('all-bus-locations', filteredLocations);
             } catch (error) {
+                console.error('Admin join error:', error);
                 socket.emit('error', { message: 'Authentication failed' });
             }
         });
@@ -218,14 +239,19 @@ export function getIO() {
  * Broadcast location update to bus room - Optimized
  * Uses regular emit for guaranteed delivery (not volatile)
  */
-export function broadcastBusLocation(busNumber, locationData) {
+export function broadcastBusLocation(busId, locationData, organizationId = null) {
     if (!io) return;
 
-    const roomName = `bus-${busNumber}`;
+    // Room name using ID for uniqueness
+    const busRoom = `bus-${busId}`;
+    io.to(busRoom).emit('location-update', locationData);
 
-    // Use regular emit for reliable delivery
-    io.to(roomName).emit('location-update', locationData);
-    io.to('admin-dashboard').emit('bus-update', locationData);
+    // Broadcast to organization-specific admin dashboard
+    if (organizationId) {
+        io.to(`admin-dashboard-${organizationId}`).emit('bus-update', locationData);
+    } else if (locationData.organizationId) {
+        io.to(`admin-dashboard-${locationData.organizationId}`).emit('bus-update', locationData);
+    }
 }
 
 /**

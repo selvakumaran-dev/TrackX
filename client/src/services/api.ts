@@ -12,6 +12,8 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 }
 
 // Storage keys - must match AuthContext
+const MASTER_TOKEN_KEY = 'trackx_master_token';
+const MASTER_REFRESH_KEY = 'trackx_master_refresh';
 const ADMIN_TOKEN_KEY = 'trackx_admin_token';
 const ADMIN_REFRESH_KEY = 'trackx_admin_refresh';
 const DRIVER_TOKEN_KEY = 'trackx_driver_token';
@@ -23,14 +25,16 @@ const DRIVER_REFRESH_KEY = 'trackx_driver_refresh';
 function getAccessToken(): string | null {
     const path = window.location.pathname;
 
-    if (path.startsWith('/admin')) {
+    if (path.startsWith('/superadmin') || path.startsWith('/master/access')) {
+        return localStorage.getItem(MASTER_TOKEN_KEY);
+    } else if (path.startsWith('/admin')) {
         return localStorage.getItem(ADMIN_TOKEN_KEY);
     } else if (path.startsWith('/driver')) {
         return localStorage.getItem(DRIVER_TOKEN_KEY);
     }
 
-    // Fallback: try both (for public pages that might need auth)
-    return localStorage.getItem(ADMIN_TOKEN_KEY) || localStorage.getItem(DRIVER_TOKEN_KEY);
+    // Fallback: try all (for public pages that might need auth)
+    return localStorage.getItem(MASTER_TOKEN_KEY) || localStorage.getItem(ADMIN_TOKEN_KEY) || localStorage.getItem(DRIVER_TOKEN_KEY);
 }
 
 /**
@@ -39,13 +43,15 @@ function getAccessToken(): string | null {
 function getRefreshToken(): string | null {
     const path = window.location.pathname;
 
-    if (path.startsWith('/admin')) {
+    if (path.startsWith('/superadmin') || path.startsWith('/master/access')) {
+        return localStorage.getItem(MASTER_REFRESH_KEY);
+    } else if (path.startsWith('/admin')) {
         return localStorage.getItem(ADMIN_REFRESH_KEY);
     } else if (path.startsWith('/driver')) {
         return localStorage.getItem(DRIVER_REFRESH_KEY);
     }
 
-    return localStorage.getItem(ADMIN_REFRESH_KEY) || localStorage.getItem(DRIVER_REFRESH_KEY);
+    return localStorage.getItem(MASTER_REFRESH_KEY) || localStorage.getItem(ADMIN_REFRESH_KEY) || localStorage.getItem(DRIVER_REFRESH_KEY);
 }
 
 /**
@@ -54,10 +60,27 @@ function getRefreshToken(): string | null {
 function saveAccessToken(token: string): void {
     const path = window.location.pathname;
 
-    if (path.startsWith('/admin')) {
+    if (path.startsWith('/superadmin') || path.startsWith('/master/access')) {
+        localStorage.setItem(MASTER_TOKEN_KEY, token);
+    } else if (path.startsWith('/admin')) {
         localStorage.setItem(ADMIN_TOKEN_KEY, token);
     } else if (path.startsWith('/driver')) {
         localStorage.setItem(DRIVER_TOKEN_KEY, token);
+    }
+}
+
+/**
+ * Save new refresh token to the correct storage
+ */
+function saveRefreshToken(token: string): void {
+    const path = window.location.pathname;
+
+    if (path.startsWith('/superadmin') || path.startsWith('/master/access')) {
+        localStorage.setItem(MASTER_REFRESH_KEY, token);
+    } else if (path.startsWith('/admin')) {
+        localStorage.setItem(ADMIN_REFRESH_KEY, token);
+    } else if (path.startsWith('/driver')) {
+        localStorage.setItem(DRIVER_REFRESH_KEY, token);
     }
 }
 
@@ -67,7 +90,11 @@ function saveAccessToken(token: string): void {
 function clearTokensAndRedirect(): void {
     const path = window.location.pathname;
 
-    if (path.startsWith('/admin')) {
+    if (path.startsWith('/superadmin') || path.startsWith('/master/access')) {
+        localStorage.removeItem(MASTER_TOKEN_KEY);
+        localStorage.removeItem(MASTER_REFRESH_KEY);
+        window.location.href = '/master/access'; // Professional Root Authority Access
+    } else if (path.startsWith('/admin')) {
         localStorage.removeItem(ADMIN_TOKEN_KEY);
         localStorage.removeItem(ADMIN_REFRESH_KEY);
         window.location.href = '/admin/login';
@@ -120,8 +147,11 @@ api.interceptors.response.use(
                     refreshToken,
                 });
 
-                const { accessToken } = response.data.data;
+                const { accessToken, refreshToken: newRefreshToken } = response.data.data;
                 saveAccessToken(accessToken);
+                if (newRefreshToken) {
+                    saveRefreshToken(newRefreshToken);
+                }
 
                 originalRequest.headers.Authorization = `Bearer ${accessToken}`;
                 return api(originalRequest);

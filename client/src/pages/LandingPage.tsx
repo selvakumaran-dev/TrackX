@@ -1,212 +1,288 @@
 /**
- * Landing Page - Real Data, Professional Design
+ * Landing Page - Human-Centered Design
+ * 
+ * Design Philosophy:
+ * - Fresh, calming color palette (sage green, warm cream, coral accents)
+ * - Generous whitespace and breathing room
+ * - Warm, approachable typography
+ * - Subtle, purposeful animations
+ * - Feels like a refreshing morning breeze
  */
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bus, MapPin, Zap, Shield, Smartphone, ArrowRight, Clock } from 'lucide-react';
+import { Bus, MapPin, Clock, Shield, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
-const features = [
-    {
-        icon: MapPin,
-        title: 'Real-Time Tracking',
-        description: 'Track buses live on an interactive map with GPS updates every 5 seconds.',
-    },
-    {
-        icon: Zap,
-        title: 'Instant Updates',
-        description: 'Get instant notifications about bus arrivals and delays.',
-    },
-    {
-        icon: Shield,
-        title: 'Safe & Reliable',
-        description: 'Enterprise-grade security for student safety.',
-    },
-    {
-        icon: Smartphone,
-        title: 'Works Everywhere',
-        description: 'Access from any device - mobile, tablet, or desktop.',
-    },
-];
-
 function LandingPage() {
-    const [stats, setStats] = useState({ buses: 0, tracking: false });
-    const [loading, setLoading] = useState(true);
-    const [apiError, setApiError] = useState(false);
-
+    const [stats, setStats] = useState({ totalBuses: 0, onlineBuses: 0 });
     useEffect(() => {
-        // Fetch real bus count
         const fetchStats = async () => {
             try {
-                // Add cache-busting timestamp to get fresh data
-                const res = await api.get('/public/buses', {
-                    params: { limit: 1, _t: Date.now() },
-                    headers: { 'Cache-Control': 'no-cache' }
-                });
-                setStats({
-                    buses: res.data.pagination?.total || 0,
-                    tracking: true,
-                });
+                const response = await api.get('/public/stats');
+                const { totalBuses, onlineBuses } = response.data.data;
+                setStats({ totalBuses, onlineBuses });
             } catch (error) {
                 console.error('Failed to fetch stats:', error);
-                setApiError(true);
-                // Set fallback value for demo
-                setStats({ buses: 2, tracking: true });
             }
-            setLoading(false);
         };
+
         fetchStats();
+        const interval = setInterval(fetchStats, 10000); // Update every 10 seconds
+        return () => clearInterval(interval);
     }, []);
 
+
     return (
-        <div className="bg-white">
-            {/* Hero Section */}
-            <section className="relative min-h-[85vh] flex items-center justify-center px-4 py-20 overflow-hidden">
-                {/* Background */}
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-indigo-100 rounded-full blur-[120px] opacity-60" />
-                    <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-100 rounded-full blur-[100px] opacity-60" />
-                </div>
+        <div className="min-h-screen bg-[#FDFBF7]">
+            {/* Custom Styles */}
+            <style>{`
+                .btn-primary {
+                    background: linear-gradient(135deg, #2D6A4F 0%, #40916C 100%);
+                    color: white;
+                    padding: 14px 28px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 14px rgba(45, 106, 79, 0.25);
+                }
+                .btn-primary:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(45, 106, 79, 0.35);
+                }
+                .btn-secondary {
+                    background: white;
+                    color: #1B4332;
+                    padding: 14px 28px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    border: 2px solid #E9ECEF;
+                    transition: all 0.3s ease;
+                }
+                .btn-secondary:hover {
+                    border-color: #2D6A4F;
+                    background: #F8F9FA;
+                }
+                .card-warm {
+                    background: white;
+                    border-radius: 20px;
+                    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+                    border: 1px solid rgba(0, 0, 0, 0.04);
+                }
+                .input-warm {
+                    background: #F8F9FA;
+                    border: 2px solid #E9ECEF;
+                    border-radius: 12px;
+                    padding: 16px 20px;
+                    font-size: 16px;
+                    transition: all 0.2s ease;
+                    color: #1B4332;
+                }
+                .input-warm:focus {
+                    outline: none;
+                    border-color: #2D6A4F;
+                    background: white;
+                    box-shadow: 0 0 0 4px rgba(45, 106, 79, 0.1);
+                }
+                .input-warm::placeholder {
+                    color: #95A3A4;
+                }
+            `}</style>
 
-                <div className="relative max-w-4xl mx-auto text-center">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-                        {/* Badge */}
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 mb-8">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-sm text-indigo-700 font-medium">Live Bus Tracking</span>
-                        </div>
-
-                        {/* Headline */}
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight tracking-tight">
-                            Know Where Your
-                            <br />
-                            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Bus Is, Always</span>
-                        </h1>
-
-                        {/* Subheadline */}
-                        <p className="text-lg text-gray-600 max-w-xl mx-auto mb-10 leading-relaxed">
-                            Real-time GPS tracking for school and college buses.
-                            Never miss your bus again with live location updates.
-                        </p>
-
-                        {/* CTA */}
-                        <Link
-                            to="/track"
-                            className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl text-lg font-semibold shadow-xl shadow-indigo-500/30 transition-all hover:scale-105"
-                        >
-                            <MapPin className="w-5 h-5" />
-                            Track Your Bus Now
-                            <ArrowRight className="w-5 h-5" />
+            {/* Navigation */}
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FDFBF7]/90 backdrop-blur-md border-b border-[#E9ECEF]">
+                <div className="max-w-6xl mx-auto px-6 lg:px-8">
+                    <div className="flex items-center justify-between h-16">
+                        <Link to="/" className="flex items-center gap-3">
+                            <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+                                <img src="/icon.svg" alt="Logo" className="w-full h-full object-contain" />
+                            </div>
+                            <span className="text-2xl font-black text-[#1B4332] tracking-tighter">TrackX</span>
                         </Link>
-                    </motion.div>
+                        <Link to="/track" className="btn-secondary text-sm py-2.5 px-5">
+                            View All Buses
+                        </Link>
+                    </div>
+                </div>
+            </nav>
 
-                    {/* Preview Image */}
-                    <motion.div className="mt-16" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
-                        <div className="relative mx-auto max-w-2xl">
-                            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-1 shadow-2xl shadow-indigo-500/20">
-                                <div className="bg-white rounded-2xl p-6">
-                                    <div className="bg-gray-100 rounded-xl aspect-video flex items-center justify-center relative overflow-hidden">
-                                        {/* Map Preview */}
-                                        <div className="absolute inset-0 opacity-30">
-                                            <div className="w-full h-full" style={{
-                                                backgroundImage: 'linear-gradient(rgba(99,102,241,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.1) 1px, transparent 1px)',
-                                                backgroundSize: '40px 40px'
-                                            }} />
-                                        </div>
+            {/* Hero Section */}
+            <section className="pt-28 pb-16 px-6 lg:px-8">
+                <div className="max-w-6xl mx-auto">
+                    <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+                        {/* Left Content */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6 }}
+                        >
+                            {/* Badge */}
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#D8F3DC] mb-6">
+                                <span className="w-2 h-2 bg-[#40916C] rounded-full animate-pulse" />
+                                <span className="text-sm font-medium text-[#2D6A4F]">
+                                    {stats.onlineBuses} buses live now
+                                </span>
+                            </div>
 
-                                        {/* Animated Buses - Show actual count */}
-                                        {!loading && Array.from({ length: Math.max(Math.min(stats.buses, 5), 1) }).map((_, index) => {
-                                            // Different animation paths for each bus
-                                            const animations = [
-                                                { x: [0, 100, 100, 0], y: [0, 50, 100, 50] },
-                                                { x: [150, 50, 50, 150], y: [80, 30, 80, 80] },
-                                                { x: [-50, 80, 120, -50], y: [40, 90, 40, 40] },
-                                                { x: [100, 0, 0, 100], y: [20, 70, 120, 20] },
-                                                { x: [50, 120, 50, 50], y: [60, 60, 10, 60] },
-                                            ];
-                                            const colors = [
-                                                'bg-indigo-500',
-                                                'bg-purple-500',
-                                                'bg-blue-500',
-                                                'bg-violet-500',
-                                                'bg-cyan-500',
-                                            ];
-                                            return (
-                                                <motion.div
-                                                    key={index}
-                                                    className="absolute"
-                                                    animate={animations[index % animations.length]}
-                                                    transition={{ duration: 8 + index * 2, repeat: Infinity, ease: "linear" }}
-                                                >
-                                                    <div className={`w-10 h-10 ${colors[index % colors.length]} rounded-xl flex items-center justify-center shadow-lg`}>
-                                                        <Bus className="w-5 h-5 text-white" />
-                                                    </div>
-                                                </motion.div>
-                                            );
-                                        })}
+                            {/* Headline */}
+                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#1B4332] leading-tight mb-6">
+                                Never miss your
+                                <br />
+                                <span className="text-[#40916C]">bus again</span>
+                            </h1>
 
-                                        <div className="relative z-10 text-center">
-                                            <p className="text-gray-500 text-sm">Interactive Map Preview</p>
-                                        </div>
-                                    </div>
+                            {/* Subheadline */}
+                            <p className="text-lg text-[#52796F] leading-relaxed mb-8 max-w-lg">
+                                Track your institute bus in real-time. Know exactly where it is
+                                and when it'll arrive at your stop.
+                            </p>
+
+                            {/* Quick Stats */}
+                            <div className="flex items-center gap-8 mb-8">
+                                <div>
+                                    <p className="text-3xl font-bold text-[#1B4332]">{stats.totalBuses}</p>
+                                    <p className="text-sm text-[#74796D]">Total Buses</p>
+                                </div>
+                                <div className="w-px h-12 bg-[#E9ECEF]" />
+                                <div>
+                                    <p className="text-3xl font-bold text-[#40916C]">24/7</p>
+                                    <p className="text-sm text-[#74796D]">Live Tracking</p>
+                                </div>
+                                <div className="w-px h-12 bg-[#E9ECEF]" />
+                                <div>
+                                    <p className="text-3xl font-bold text-[#1B4332]">5s</p>
+                                    <p className="text-sm text-[#74796D]">Updates</p>
                                 </div>
                             </div>
 
-                            {/* Real Stats */}
-                            <div className="flex justify-center gap-4 mt-6">
-                                <div className="bg-white shadow-lg shadow-gray-200/50 rounded-xl px-5 py-3 text-center border border-gray-100">
-                                    <div className="text-lg font-bold text-indigo-600">
-                                        {loading ? '...' : (apiError ? stats.buses + '*' : stats.buses)}
+                            {/* CTA Buttons */}
+                            <div className="flex flex-wrap items-center gap-4">
+                                <Link to="/track" className="btn-primary inline-flex items-center gap-2">
+                                    <MapPin className="w-5 h-5" />
+                                    Track Buses
+                                </Link>
+                            </div>
+                        </motion.div>
+
+                        {/* Right - Visual Preview */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                            className="relative"
+                        >
+                            <div className="card-warm p-8 lg:p-10">
+                                {/* Map Preview Illustration */}
+                                <div className="relative aspect-square max-w-[320px] mx-auto">
+                                    {/* Background circles */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-full h-full rounded-full bg-[#D8F3DC]/30 animate-pulse" />
                                     </div>
-                                    <div className="text-xs text-gray-500">Buses</div>
+                                    <div className="absolute inset-4 flex items-center justify-center">
+                                        <div className="w-full h-full rounded-full bg-[#D8F3DC]/50" />
+                                    </div>
+                                    <div className="absolute inset-8 flex items-center justify-center">
+                                        <div className="w-full h-full rounded-full bg-[#D8F3DC]" />
+                                    </div>
+
+                                    {/* Center bus icon */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#2D6A4F] to-[#40916C] flex items-center justify-center shadow-xl">
+                                            <Bus className="w-10 h-10 text-white" />
+                                        </div>
+                                    </div>
+
+                                    {/* Floating stop markers */}
+                                    <div className="absolute top-8 right-8 w-8 h-8 rounded-full bg-[#E07A5F] flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                                        1
+                                    </div>
+                                    <div className="absolute bottom-12 left-6 w-8 h-8 rounded-full bg-[#457B9D] flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                                        2
+                                    </div>
+                                    <div className="absolute top-1/3 left-4 w-8 h-8 rounded-full bg-[#F4A261] flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                                        3
+                                    </div>
                                 </div>
-                                <div className="bg-white shadow-lg shadow-gray-200/50 rounded-xl px-5 py-3 text-center border border-gray-100">
-                                    <div className="text-lg font-bold text-green-600 flex items-center gap-1">
-                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                        Live
-                                    </div>
-                                    <div className="text-xs text-gray-500">Tracking</div>
-                                </div>
-                                <div className="bg-white shadow-lg shadow-gray-200/50 rounded-xl px-5 py-3 text-center border border-gray-100">
-                                    <div className="text-lg font-bold text-indigo-600 flex items-center gap-1">
-                                        <Clock className="w-4 h-4" />
-                                        24/7
-                                    </div>
-                                    <div className="text-xs text-gray-500">Available</div>
+
+                                {/* Caption */}
+                                <div className="text-center mt-6">
+                                    <p className="text-[#1B4332] font-semibold">Real-time GPS Tracking</p>
+                                    <p className="text-sm text-[#74796D] mt-1">See exactly where your bus is</p>
                                 </div>
                             </div>
-                        </div>
-                    </motion.div>
+
+                            {/* Decorative blur */}
+                            <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-[#D8F3DC] rounded-full blur-3xl opacity-50 -z-10" />
+                        </motion.div>
+                    </div>
                 </div>
             </section>
 
-            {/* Features */}
-            <section className="py-20 px-4 bg-gray-50">
-                <div className="max-w-5xl mx-auto">
-                    <motion.div className="text-center mb-16" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
-                        <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose TrackX?</h2>
-                        <p className="text-gray-600 max-w-xl mx-auto">Simple, reliable, and always available.</p>
+            {/* Features Section */}
+            <section className="py-20 px-6 lg:px-8 bg-white">
+                <div className="max-w-6xl mx-auto">
+                    <motion.div
+                        className="text-center mb-16"
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                    >
+                        <h2 className="text-3xl sm:text-4xl font-bold text-[#1B4332] mb-4">
+                            Simple & Reliable
+                        </h2>
+                        <p className="text-[#52796F] max-w-md mx-auto">
+                            Everything you need to track your bus, nothing you don't.
+                        </p>
                     </motion.div>
 
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {features.map((feature, index) => {
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[
+                            {
+                                icon: MapPin,
+                                title: 'Live Location',
+                                description: 'See exactly where your bus is on the map',
+                                color: '#40916C',
+                                bg: '#D8F3DC',
+                            },
+                            {
+                                icon: Clock,
+                                title: 'Smart ETA',
+                                description: 'Know when it arrives at your stop',
+                                color: '#E07A5F',
+                                bg: '#FFF1E6',
+                            },
+                            {
+                                icon: Bus,
+                                title: 'All Buses',
+                                description: 'Track any bus from your institute',
+                                color: '#8B5CF6',
+                                bg: '#F3E8FF',
+                            },
+                        ].map((feature, i) => {
                             const Icon = feature.icon;
                             return (
                                 <motion.div
-                                    key={index}
-                                    className="bg-white rounded-2xl p-6 shadow-lg shadow-gray-200/50 border border-gray-100 text-center"
+                                    key={i}
+                                    className="card-warm p-6 text-center"
                                     initial={{ opacity: 0, y: 20 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
-                                    transition={{ delay: index * 0.1 }}
+                                    transition={{ delay: i * 0.1 }}
                                 >
-                                    <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-indigo-100 flex items-center justify-center">
-                                        <Icon className="w-7 h-7 text-indigo-600" />
+                                    <div
+                                        className="w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center"
+                                        style={{ backgroundColor: feature.bg }}
+                                    >
+                                        <Icon className="w-7 h-7" style={{ color: feature.color }} />
                                     </div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                                    <p className="text-sm text-gray-600 leading-relaxed">{feature.description}</p>
+                                    <h3 className="text-lg font-semibold text-[#1B4332] mb-2">
+                                        {feature.title}
+                                    </h3>
+                                    <p className="text-sm text-[#74796D] leading-relaxed">
+                                        {feature.description}
+                                    </p>
                                 </motion.div>
                             );
                         })}
@@ -214,20 +290,67 @@ function LandingPage() {
                 </div>
             </section>
 
-            {/* CTA Section */}
-            <section className="py-20 px-4">
-                <div className="max-w-2xl mx-auto">
+            {/* How It Works */}
+            <section className="py-20 px-6 lg:px-8">
+                <div className="max-w-4xl mx-auto">
                     <motion.div
-                        className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-10 text-center shadow-xl"
+                        className="text-center mb-16"
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                    >
+                        <h2 className="text-3xl sm:text-4xl font-bold text-[#1B4332] mb-4">
+                            How It Works
+                        </h2>
+                        <p className="text-[#52796F]">
+                            Three simple steps to track your bus
+                        </p>
+                    </motion.div>
+
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {[
+                            { step: '1', title: 'Enter Code', desc: 'Get your institute code and enter it above' },
+                            { step: '2', title: 'Find Bus', desc: 'See all buses from your institute on the map' },
+                            { step: '3', title: 'Track Live', desc: 'Watch your bus moving in real-time' },
+                        ].map((item, i) => (
+                            <motion.div
+                                key={i}
+                                className="text-center"
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.1 }}
+                            >
+                                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#2D6A4F] to-[#40916C] flex items-center justify-center text-2xl font-bold text-white shadow-lg">
+                                    {item.step}
+                                </div>
+                                <h3 className="text-lg font-semibold text-[#1B4332] mb-2">{item.title}</h3>
+                                <p className="text-sm text-[#74796D]">{item.desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* CTA Section */}
+            <section className="py-20 px-6 lg:px-8">
+                <div className="max-w-4xl mx-auto">
+                    <motion.div
+                        className="card-warm p-10 md:p-16 text-center"
+                        style={{ background: 'linear-gradient(135deg, #2D6A4F 0%, #40916C 100%)' }}
                         initial={{ opacity: 0, scale: 0.98 }}
                         whileInView={{ opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
                     >
-                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Ready to Track?</h2>
-                        <p className="text-indigo-100 mb-8">Enter your bus number and see it live on the map.</p>
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                            Ready to track your bus?
+                        </h2>
+                        <p className="text-white/80 mb-8 max-w-md mx-auto">
+                            Start tracking and never worry about missing your bus again.
+                        </p>
                         <Link
                             to="/track"
-                            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-indigo-600 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#2D6A4F] rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105"
                         >
                             <MapPin className="w-5 h-5" />
                             Start Tracking
@@ -235,6 +358,30 @@ function LandingPage() {
                     </motion.div>
                 </div>
             </section>
+
+            {/* Footer */}
+            <footer className="py-12 px-6 lg:px-8 border-t border-[#E9ECEF]">
+                <div className="max-w-6xl mx-auto">
+                    <div className="flex flex-col md:flex-row justify-between mb-12">
+                        <div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+                                    <img src="/icon.svg" alt="Logo" className="w-full h-full object-contain" />
+                                </div>
+                                <span className="text-xl font-black text-[#1B4332] tracking-tighter">TrackX</span>
+                            </div>
+                            <p className="text-sm text-[#74796D] max-w-xs">
+                                Providing next-generation real-time telemetry for institutional fleet management.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="pt-8 border-t border-[#E9ECEF] flex flex-col md:flex-row items-center justify-between gap-6">
+                        <p className="text-[10px] font-black text-[#95A3A4] uppercase tracking-widest">
+                            © {new Date().getFullYear()} TrackX Telemetry Systems. All Rights Reserved.
+                        </p>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }

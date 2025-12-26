@@ -15,16 +15,20 @@ import { ApiError } from '../middlewares/errorHandler.js';
  * @param {object} options - Query options
  */
 export async function getAllDrivers(options = {}) {
-    const { page = 1, limit = 10, search = '', sortBy = 'createdAt', sortOrder = 'desc' } = options;
+    // Note: organizationId should be filtered via relation if scalar is not recognized
+    const { page = 1, limit = 10, search = '', sortBy = 'createdAt', sortOrder = 'desc', organizationId } = options;
 
     // MongoDB compatible search
-    const where = search ? {
-        OR: [
-            { name: { contains: search } },
-            { email: { contains: search } },
-            { phone: { contains: search } },
-        ],
-    } : {};
+    const where = {
+        organizationId: organizationId,
+        ...(search ? {
+            OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
+            ],
+        } : {})
+    };
 
     const [drivers, total] = await Promise.all([
         prisma.driver.findMany({
@@ -60,10 +64,14 @@ export async function getAllDrivers(options = {}) {
 /**
  * Get a single driver by ID
  * @param {string} id - Driver ID
+ * @param {string} organizationId - Organization ID for security
  */
-export async function getDriverById(id) {
+export async function getDriverById(id, organizationId = null) {
     const driver = await prisma.driver.findUnique({
-        where: { id },
+        where: {
+            id,
+            ...(organizationId && { organization: { id: organizationId } }),
+        },
         select: {
             id: true,
             email: true,
@@ -131,6 +139,12 @@ export async function createDriver(data) {
             name: data.name,
             phone: data.phone || null,
             isActive: data.isActive ?? true,
+            // Use connect syntax for relation to avoid scalar issues
+            ...(data.organizationId && {
+                organization: {
+                    connect: { id: data.organizationId }
+                }
+            }),
             ...(data.busId && {
                 bus: { connect: { id: data.busId } },
             }),
@@ -160,10 +174,14 @@ export async function createDriver(data) {
  * Update a driver
  * @param {string} id - Driver ID
  * @param {object} data - Update data
+ * @param {string} organizationId - Organization ID for security
  */
-export async function updateDriver(id, data) {
+export async function updateDriver(id, data, organizationId = null) {
     const existing = await prisma.driver.findUnique({
-        where: { id },
+        where: {
+            id,
+            ...(organizationId && { organization: { id: organizationId } }),
+        },
     });
 
     if (!existing) {
@@ -296,8 +314,21 @@ export async function updateDriverProfile(id, data) {
  * Update driver photo
  * @param {string} id - Driver ID
  * @param {string} photoUrl - Photo URL
+ * @param {string} organizationId - Organization ID for security
  */
-export async function updateDriverPhoto(id, photoUrl) {
+export async function updateDriverPhoto(id, photoUrl, organizationId = null) {
+    // Verify ownership first
+    const driverSearch = await prisma.driver.findUnique({
+        where: {
+            id,
+            ...(organizationId && { organizationId }), // Some models use organizationId directly
+        }
+    });
+
+    if (!driverSearch) {
+        throw new ApiError(404, 'Driver not found');
+    }
+
     const driver = await prisma.driver.update({
         where: { id },
         data: { photoUrl },
@@ -313,10 +344,14 @@ export async function updateDriverPhoto(id, photoUrl) {
 /**
  * Delete a driver
  * @param {string} id - Driver ID
+ * @param {string} organizationId - Organization ID for security
  */
-export async function deleteDriver(id) {
+export async function deleteDriver(id, organizationId = null) {
     const existing = await prisma.driver.findUnique({
-        where: { id },
+        where: {
+            id,
+            ...(organizationId && { organization: { id: organizationId } }),
+        },
     });
 
     if (!existing) {
@@ -332,18 +367,35 @@ export async function deleteDriver(id) {
 
 /**
  * Get available drivers (not assigned to any bus)
+ * @param {string} organizationId - Optional organization filter
  */
-export async function getAvailableDrivers() {
+export async function getAvailableDrivers(organizationId = null) {
+    const where = {
+        busId: null,
+        isActive: true,
+        ...(organizationId && { organization: { id: organizationId } }),
+    };
+
     const drivers = await prisma.driver.findMany({
-        where: {
-            busId: null,
-            isActive: true,
-        },
+        where,
         select: {
             id: true,
             name: true,
             email: true,
             phone: true,
+            photoUrl: true,
+            isActive: true,
+            lastLoginAt: true,
+            createdAt: true,
+            updatedAt: true,
+            busId: true,
+            bus: {
+                select: {
+                    id: true,
+                    busNumber: true,
+                    busName: true,
+                },
+            },
         },
         orderBy: { name: 'asc' },
     });

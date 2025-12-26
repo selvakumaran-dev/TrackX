@@ -1,5 +1,6 @@
 /**
- * Driver Layout - Ultra Mobile-First with Bottom Navigation
+ * Driver Layout - Human-Centered Design
+ * Warm & calming mobile-first bottom navigation
  */
 
 import React from 'react';
@@ -17,7 +18,7 @@ const DriverLayout: React.FC = () => {
     ];
 
     return (
-        <div className="min-h-[100dvh] bg-slate-900 relative">
+        <div className="min-h-[100dvh] bg-[#FDFBF7] relative">
             {/* Main Content */}
             <main className="pb-20">
                 <Outlet />
@@ -25,7 +26,7 @@ const DriverLayout: React.FC = () => {
 
             {/* Bottom Navigation - Mobile Optimized */}
             <nav className="fixed bottom-0 left-0 right-0 z-50 safe-nav">
-                <div className="bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 px-2">
+                <div className="bg-white/95 backdrop-blur-xl border-t border-[#E9ECEF] px-2 shadow-lg">
                     <div className="flex justify-around items-center h-16 max-w-md mx-auto">
                         {navItems.map((item) => {
                             const isActive = location.pathname === item.path;
@@ -37,13 +38,13 @@ const DriverLayout: React.FC = () => {
                                 >
                                     <motion.div
                                         whileTap={{ scale: 0.9 }}
-                                        className={`flex flex-col items-center justify-center w-full py-1 rounded-2xl transition-colors ${isActive ? 'text-indigo-400' : 'text-slate-500'
+                                        className={`flex flex-col items-center justify-center w-full py-1 rounded-2xl transition-colors ${isActive ? 'text-[#2D6A4F]' : 'text-[#95A3A4]'
                                             }`}
                                     >
                                         {isActive && (
                                             <motion.div
                                                 layoutId="activeTab"
-                                                className="absolute inset-x-2 top-1 bottom-1 bg-indigo-500/10 rounded-2xl"
+                                                className="absolute inset-x-2 top-1 bottom-1 bg-[#D8F3DC] rounded-2xl"
                                                 transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                                             />
                                         )}
@@ -59,13 +60,13 @@ const DriverLayout: React.FC = () => {
                 </div>
 
                 {/* Safe area fill for iOS */}
-                <div className="bg-slate-900/95 h-safe-b" />
+                <div className="bg-white/95 h-safe-b" />
             </nav>
 
             <style>{`
-        .safe-nav { padding-bottom: env(safe-area-inset-bottom); }
-        .h-safe-b { height: env(safe-area-inset-bottom); }
-      `}</style>
+                .safe-nav { padding-bottom: env(safe-area-inset-bottom); }
+                .h-safe-b { height: env(safe-area-inset-bottom); }
+            `}</style>
         </div>
     );
 };

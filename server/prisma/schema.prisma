@@ -1,6 +1,6 @@
 // ============================================
 // TrackX Database Schema - Prisma ORM (MongoDB)
-// Enterprise-grade bus tracking system
+// Multi-tenant organization-based bus tracking system
 // ============================================
 
 generator client {
@@ -13,19 +13,64 @@ datasource db {
 }
 
 // ============================================
+// ORGANIZATION MODEL
+// Colleges/Schools using TrackX platform
+// ============================================
+model Organization {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String   // College/School name
+  code            String   @unique // Unique join code (e.g., "SRMC2024")
+  slug            String   @unique // URL-friendly slug
+  logoUrl         String?  // Organization logo
+  bannerUrl       String?  // Banner image
+  primaryColor    String   @default("#6366f1") // Brand color
+  secondaryColor  String   @default("#8b5cf6")
+  address         String?
+  city            String?
+  state           String?
+  country         String   @default("India")
+  contactEmail    String?
+  contactPhone    String?
+  website         String?
+  
+  // Subscription (Legacy - Now fully free)
+  subscriptionTier String  @default("FREE") 
+  subscriptionEnd  DateTime?
+  maxBuses         Int     @default(999)
+  maxDrivers       Int     @default(999)
+  
+  isActive    Boolean  @default(true)
+  isVerified  Boolean  @default(false) // Admin verified
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  admins  Admin[]
+  drivers Driver[]
+  buses   Bus[]
+
+  @@map("organizations")
+}
+
+// ============================================
 // ADMIN MODEL
-// System administrators with full access
+// Organization administrators
 // ============================================
 model Admin {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   email       String    @unique
   password    String
   name        String
-  role        String    @default("ADMIN") // SUPER_ADMIN, ADMIN
+  phone       String?
+  role        String    @default("ADMIN") // SUPER_ADMIN, ORG_ADMIN, ADMIN
   isActive    Boolean   @default(true)
   lastLoginAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  // Organization relation (null for SUPER_ADMIN)
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("admins")
 }
@@ -46,6 +91,10 @@ model Driver {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Organization relation
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   busId   String?  @unique @db.ObjectId
   bus     Bus?     @relation(fields: [busId], references: [id])
   gpsLogs GpsLog[]
@@ -59,19 +108,24 @@ model Driver {
 // ============================================
 model Bus {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  busNumber   String   @unique
+  busNumber   String
   busName     String
   gpsDeviceId String?
-  apiKey      String?  @unique
+  apiKey      String?
   apiKeyHash  String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Organization relation
+  organizationId String?       @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   driver  Driver?
   gpsLogs GpsLog[]
   stops   BusStop[]
 
+  @@unique([busNumber, organizationId])
   @@map("buses")
 }
 
@@ -117,6 +171,21 @@ model GpsLog {
 
   @@index([busId, timestamp(sort: Desc)])
   @@map("gps_logs")
+}
+
+// ============================================
+// SYSTEM CONFIG MODEL
+// Global platform-wide settings
+// ============================================
+model SystemConfig {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  matrixAutoScaling Boolean  @default(true)
+  rootCipherLogic  String   @default("AES-512-GCM")
+  telemetryPushFreq Int      @default(1000)
+  maintenanceMode  Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+
+  @@map("system_configs")
 }
 
 // ============================================

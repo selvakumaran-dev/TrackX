@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -8,32 +13,28 @@ export default defineConfig({
         react(),
         VitePWA({
             registerType: 'autoUpdate',
-            includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
+            includeAssets: ['favicon.svg', 'icon.svg'],
             manifest: {
-                name: 'TrackX - Bus Tracking',
+                name: 'TrackX Platinum',
                 short_name: 'TrackX',
-                description: 'Real-time bus tracking for Tamil Nadu',
-                theme_color: '#6366f1',
-                background_color: '#0f172a',
+                description: 'Enterprise Real-Time Bus Tracking',
+                theme_color: '#1B4332',
+                background_color: '#081C15',
                 display: 'standalone',
                 orientation: 'portrait',
                 scope: '/',
                 start_url: '/',
                 icons: [
                     {
-                        src: 'icon-192.png',
-                        sizes: '192x192',
-                        type: 'image/png',
+                        src: 'icon.svg',
+                        sizes: '512x512',
+                        type: 'image/svg+xml',
+                        purpose: 'any',
                     },
                     {
-                        src: 'icon-512.png',
+                        src: 'icon.svg',
                         sizes: '512x512',
-                        type: 'image/png',
-                    },
-                    {
-                        src: 'icon-512.png',
-                        sizes: '512x512',
-                        type: 'image/png',
+                        type: 'image/svg+xml',
                         purpose: 'maskable',
                     },
                 ],
@@ -43,12 +44,15 @@ export default defineConfig({
                 runtimeCaching: [
                     {
                         urlPattern: /^https:\/\/.*\.tile\..*\/.*/i,
-                        handler: 'CacheFirst',
+                        handler: 'StaleWhileRevalidate',
                         options: {
                             cacheName: 'map-tiles',
                             expiration: {
-                                maxEntries: 1000,
+                                maxEntries: 5000,
                                 maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200],
                             },
                         },
                     },
@@ -70,6 +74,29 @@ export default defineConfig({
                             },
                         },
                     },
+                    {
+                        urlPattern: /\/api\/public\/.*/,
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'public-api-cache',
+                            expiration: {
+                                maxEntries: 50,
+                                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+                            },
+                            networkTimeoutSeconds: 5,
+                        },
+                    },
+                    {
+                        urlPattern: /\/api\/organizations\/lookup\/.*/,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'org-lookup-cache',
+                            expiration: {
+                                maxEntries: 100,
+                                maxAgeSeconds: 60 * 60 * 24 * 7, // 1 week
+                            },
+                        },
+                    },
                 ],
             },
         }),
@@ -86,11 +113,16 @@ export default defineConfig({
                 ws: true,
                 changeOrigin: true,
             },
+            '/uploads': {
+                target: 'http://localhost:3001',
+                changeOrigin: true,
+            },
         },
     },
     resolve: {
         alias: {
-            '@': '/src',
+            '@': resolve(__dirname, './src'),
         },
+        extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
     },
 });

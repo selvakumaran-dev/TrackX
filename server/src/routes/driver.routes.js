@@ -107,6 +107,11 @@ router.get('/bus', async (req, res, next) => {
                         apiKey: true,
                         gpsDeviceId: true,
                         isActive: true,
+                        organization: {
+                            select: {
+                                code: true,
+                            },
+                        },
                     },
                 },
             },
@@ -168,6 +173,32 @@ router.post('/location', validate(driverLocationUpdateSchema), async (req, res, 
         next(error);
     }
 });
+
+/**
+ * POST /api/driver/stop-tracking
+ * Manually stop tracking for assigned bus
+ */
+router.post('/stop-tracking', async (req, res, next) => {
+    try {
+        const driver = await prisma.driver.findUnique({
+            where: { id: req.user.id },
+            include: { bus: true }
+        });
+
+        if (driver?.bus) {
+            const io = getIO();
+            await GpsService.stopTracking(driver.bus.id, io);
+        }
+
+        res.json({
+            success: true,
+            message: 'Tracking stopped successfully'
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 // ============================================
 // Location History

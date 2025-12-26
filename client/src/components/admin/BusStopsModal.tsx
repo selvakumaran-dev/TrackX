@@ -4,9 +4,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, GripVertical, MapPin, Save, Map } from 'lucide-react';
+import { X, Plus, Trash2, GripVertical, MapPin, Save, Map, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import LocationPickerModal from './LocationPickerModal';
+
+import ConfirmModal from '../common/ConfirmModal';
 
 // Type definitions
 interface BusStop {
@@ -37,6 +39,8 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }: BusStopsModalProps) {
     const [error, setError] = useState('');
     const [showLocationPicker, setShowLocationPicker] = useState(false);
     const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [indexToDelete, setIndexToDelete] = useState<number | null>(null);
 
     useEffect(() => {
         if (bus?.stops) {
@@ -61,15 +65,22 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }: BusStopsModalProps) {
             longitude: '',
             order: stops.length + 1,
         }]);
-        // Open map picker immediately for new stop
         setEditingStopIndex(newIndex);
         setShowLocationPicker(true);
     };
 
-    const removeStop = (index: number) => {
-        const newStops = stops.filter((_, i) => i !== index);
-        // Reorder
-        setStops(newStops.map((s, i) => ({ ...s, order: i + 1 })));
+    const confirmRemoveStop = (index: number) => {
+        setIndexToDelete(index);
+        setShowDeleteConfirm(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (indexToDelete !== null) {
+            const newStops = stops.filter((_, i) => i !== indexToDelete);
+            setStops(newStops.map((s, i) => ({ ...s, order: i + 1 })));
+        }
+        setShowDeleteConfirm(false);
+        setIndexToDelete(null);
     };
 
     const updateStop = (index: number, field: keyof BusStop, value: string | number) => {
@@ -101,7 +112,6 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }: BusStopsModalProps) {
     };
 
     const handleSave = async () => {
-        // Validate
         for (const stop of stops) {
             if (!stop.name.trim()) {
                 setError('All stops must have a name');
@@ -146,112 +156,104 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }: BusStopsModalProps) {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
                     <motion.div
-                        className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden bg-dark-800 rounded-2xl border border-white/10 shadow-2xl flex flex-col"
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.95, opacity: 0 }}
+                        className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden bg-[#FDFBF7] rounded-3xl border border-[#E9ECEF] shadow-2xl flex flex-col"
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 20 }}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-white/10">
-                            <div>
-                                <h2 className="text-xl font-semibold text-white">Manage Stops</h2>
-                                <p className="text-sm text-dark-400 mt-1">{bus?.busNumber} - {bus?.busName}</p>
+                        <div className="flex items-center justify-between p-6 border-b border-[#E9ECEF] bg-white">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-[#FFF1E6] flex items-center justify-center">
+                                    <MapPin className="w-6 h-6 text-[#E07A5F]" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-[#1B4332]">Route Stops</h2>
+                                    <p className="text-sm text-[#74796D] mt-0.5">{bus?.busNumber} - {bus?.busName}</p>
+                                </div>
                             </div>
-                            <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-dark-400 hover:text-white">
-                                <X className="w-5 h-5" />
+                            <button onClick={onClose} className="p-2.5 rounded-xl hover:bg-[#F8F9FA] text-[#74796D] hover:text-[#1B4332] transition-colors">
+                                <X className="w-6 h-6" />
                             </button>
                         </div>
 
                         {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-6">
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
                             {error && (
-                                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                                    {error}
-                                </div>
+                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                                    className="p-4 bg-[#FFF1E6] rounded-2xl border border-[#E07A5F]/20 text-[#E07A5F] text-sm flex items-center gap-3">
+                                    <AlertCircle className="w-5 h-5" /> {error}
+                                </motion.div>
                             )}
 
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                                 {stops.length === 0 ? (
-                                    <div className="text-center py-8 text-dark-500">
-                                        <MapPin className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                        <p>No stops added yet</p>
-                                        <p className="text-sm mt-1">Click "Add Stop" to add route stops</p>
+                                    <div className="text-center py-12 bg-white rounded-3xl border-2 border-dashed border-[#E9ECEF]">
+                                        <div className="w-16 h-16 bg-[#F8F9FA] rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Map className="w-8 h-8 text-[#95A3A4]" />
+                                        </div>
+                                        <p className="text-[#1B4332] font-bold">No stops yet</p>
+                                        <p className="text-sm text-[#74796D] mt-1">Add stops to define the bus route</p>
                                     </div>
                                 ) : (
                                     stops.map((stop, index) => (
-                                        <div key={stop.id} className="p-4 bg-dark-900 rounded-xl border border-white/5">
-                                            <div className="flex items-start gap-3">
-                                                <div className="flex items-center h-10 text-dark-500">
-                                                    <GripVertical className="w-4 h-4" />
-                                                    <span className="ml-1 text-sm font-medium w-4">{index + 1}</span>
+                                        <div key={stop.id} className="p-5 bg-white rounded-2xl border border-[#E9ECEF] shadow-sm group hover:border-[#2D6A4F]/20 transition-all">
+                                            <div className="flex items-start gap-4">
+                                                <div className="flex flex-col items-center gap-2 mt-1">
+                                                    <div className="w-7 h-7 bg-[#D8F3DC] rounded-full flex items-center justify-center text-[10px] font-black text-[#2D6A4F]">
+                                                        {index + 1}
+                                                    </div>
+                                                    <div className="w-0.5 h-full bg-[#E9ECEF] rounded-full min-h-[40px] group-last:hidden" />
                                                 </div>
 
-                                                <div className="flex-1 space-y-3">
-                                                    {/* Stop Name */}
+                                                <div className="flex-1 space-y-4">
                                                     <div>
-                                                        <label className="text-xs text-dark-500 mb-1 block">Stop Name *</label>
+                                                        <label className="text-[10px] font-bold text-[#74796D] uppercase tracking-wider mb-1.5 block">Stop Name</label>
                                                         <input
                                                             type="text"
                                                             value={stop.name}
                                                             onChange={(e) => updateStop(index, 'name', e.target.value)}
-                                                            placeholder="e.g., Main Gate, Library, Bus Stand"
-                                                            className="input py-2 text-sm"
+                                                            className="w-full px-4 py-2.5 bg-[#F8F9FA] border-2 border-[#E9ECEF] rounded-xl text-[#1B4332] focus:outline-none focus:border-[#2D6A4F] transition"
                                                         />
                                                     </div>
 
-                                                    {/* Coordinates Row */}
-                                                    <div className="flex items-end gap-2">
-                                                        <div className="flex-1 grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label className="text-xs text-dark-500 mb-1 block">Latitude</label>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <div className="flex-1 flex gap-2">
+                                                            <div className="flex-1">
+                                                                <label className="text-[10px] font-bold text-[#74796D] mb-1 block">LATITUDE</label>
                                                                 <input
-                                                                    type="number"
-                                                                    step="any"
-                                                                    value={stop.latitude}
-                                                                    onChange={(e) => updateStop(index, 'latitude', e.target.value)}
-                                                                    placeholder="12.9716"
-                                                                    className="input py-2 text-sm font-mono"
+                                                                    type="text"
+                                                                    value={stop.latitude || '—'}
                                                                     readOnly
+                                                                    className="w-full px-3 py-2 bg-[#F8F9FA] border border-[#E9ECEF] rounded-lg text-xs font-mono text-[#52796F]"
                                                                 />
                                                             </div>
-                                                            <div>
-                                                                <label className="text-xs text-dark-500 mb-1 block">Longitude</label>
+                                                            <div className="flex-1">
+                                                                <label className="text-[10px] font-bold text-[#74796D] mb-1 block">LONGITUDE</label>
                                                                 <input
-                                                                    type="number"
-                                                                    step="any"
-                                                                    value={stop.longitude}
-                                                                    onChange={(e) => updateStop(index, 'longitude', e.target.value)}
-                                                                    placeholder="77.5946"
-                                                                    className="input py-2 text-sm font-mono"
+                                                                    type="text"
+                                                                    value={stop.longitude || '—'}
                                                                     readOnly
+                                                                    className="w-full px-3 py-2 bg-[#F8F9FA] border border-[#E9ECEF] rounded-lg text-xs font-mono text-[#52796F]"
                                                                 />
                                                             </div>
                                                         </div>
                                                         <button
                                                             onClick={() => openLocationPicker(index)}
-                                                            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap h-[42px]"
+                                                            className="h-[42px] mt-auto px-4 bg-[#E8F4F8] text-[#457B9D] rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#D7E9F1] transition"
                                                         >
-                                                            <Map className="w-4 h-4" />
-                                                            Pick on Map
+                                                            <Map className="w-4 h-4" /> Pick on Map
                                                         </button>
                                                     </div>
-
-                                                    {/* Location Status */}
-                                                    {stop.latitude && stop.longitude && (
-                                                        <div className="flex items-center gap-2 text-xs text-green-400">
-                                                            <MapPin className="w-3 h-3" />
-                                                            Location set: {Number(stop.latitude).toFixed(4)}, {Number(stop.longitude).toFixed(4)}
-                                                        </div>
-                                                    )}
                                                 </div>
 
                                                 <button
-                                                    onClick={() => removeStop(index)}
-                                                    className="p-2 rounded-lg hover:bg-red-500/20 text-dark-500 hover:text-red-400"
+                                                    onClick={() => confirmRemoveStop(index)}
+                                                    className="p-2.5 rounded-xl hover:bg-[#FFF1E6] text-[#95A3A4] hover:text-[#E07A5F] transition-colors"
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <Trash2 className="w-5 h-5" />
                                                 </button>
                                             </div>
                                         </div>
@@ -261,21 +263,24 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }: BusStopsModalProps) {
 
                             <button
                                 onClick={addStop}
-                                className="w-full mt-4 py-3 border-2 border-dashed border-dark-600 rounded-xl text-dark-400 hover:text-white hover:border-primary-500 transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-4 border-2 border-dashed border-[#E9ECEF] rounded-2xl text-[#74796D] font-bold hover:text-[#2D6A4F] hover:border-[#2D6A4F]/30 hover:bg-[#D8F3DC]/10 transition-all flex items-center justify-center gap-2"
                             >
-                                <Plus className="w-4 h-4" />
-                                Add Stop
+                                <Plus className="w-5 h-5" /> Add New Stop
                             </button>
                         </div>
 
                         {/* Footer */}
-                        <div className="p-6 border-t border-white/10 flex gap-3">
-                            <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
-                            <button onClick={handleSave} disabled={saving} className="btn-primary flex-1">
+                        <div className="p-6 border-t border-[#E9ECEF] bg-white flex gap-3">
+                            <button onClick={onClose} className="flex-1 py-3.5 bg-[#F8F9FA] text-[#74796D] font-bold rounded-2xl border-2 border-[#E9ECEF] hover:bg-[#E9ECEF] transition active:scale-95">
+                                Cancel
+                            </button>
+                            <button onClick={handleSave} disabled={saving} className="flex-1 py-3.5 bg-gradient-to-r from-[#2D6A4F] to-[#40916C] text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition active:scale-95 disabled:opacity-50">
                                 {saving ? (
-                                    <><div className="spinner" /> Saving...</>
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
                                 ) : (
-                                    <><Save className="w-4 h-4" /> Save Stops</>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Save className="w-5 h-5" /> Save Route
+                                    </div>
                                 )}
                             </button>
                         </div>
@@ -283,7 +288,6 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }: BusStopsModalProps) {
                 </motion.div>
             </AnimatePresence>
 
-            {/* Location Picker Modal */}
             <LocationPickerModal
                 isOpen={showLocationPicker}
                 onClose={() => {
@@ -293,6 +297,17 @@ function BusStopsModal({ isOpen, onClose, bus, onSaved }: BusStopsModalProps) {
                 onSelect={handleLocationSelect}
                 initialLat={editingStopIndex !== null && stops[editingStopIndex]?.latitude ? Number(stops[editingStopIndex].latitude) : null}
                 initialLng={editingStopIndex !== null && stops[editingStopIndex]?.longitude ? Number(stops[editingStopIndex].longitude) : null}
+            />
+
+            <ConfirmModal
+                isOpen={showDeleteConfirm}
+                onClose={() => { setShowDeleteConfirm(false); setIndexToDelete(null); }}
+                onConfirm={handleConfirmDelete}
+                title="Remove Stop"
+                message="Are you sure you want to remove this stop from the route?"
+                confirmText="Remove Stop"
+                cancelText="Keep It"
+                type="danger"
             />
         </>
     );

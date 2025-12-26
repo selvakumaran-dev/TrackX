@@ -8,33 +8,26 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-lea
 import { X, MapPin, Check, Search, Loader2, AlertCircle, Navigation } from 'lucide-react';
 import L, { LatLngExpression } from 'leaflet';
 
-// Map tile
+// Map tile - Using a cleaner voyager style
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
 // Tamil Nadu center
 const TN_CENTER: [number, number] = [11.1271, 78.6569];
 
-// Marker icon
+// Premium Marker icon
 const markerIcon = L.divIcon({
     className: 'location-picker-marker',
-    html: `<div style="
-    width: 40px; height: 40px; 
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    border-radius: 50% 50% 50% 0; 
-    transform: rotate(-45deg);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-    border: 3px solid white;
-  ">
-    <div style="transform: rotate(45deg); color: white;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-        <circle cx="12" cy="10" r="3"/>
-      </svg>
-    </div>
-  </div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
+    html: `
+    <div style="position:relative; width:48px; height:48px;">
+        <div style="position:absolute; inset:0; background:rgba(45,106,79,0.2); border-radius:50%; animation:pulse-ring 2s infinite;"></div>
+        <div style="position:absolute; inset:8px; background:linear-gradient(135deg, #2D6A4F, #40916C); border:3px solid white; border-radius:50%; box-shadow:0 4px 15px rgba(45,106,79,0.4); display:flex; align-items:center; justify-content:center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" style="width:16px; height:16px;">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+        </div>
+    </div>`,
+    iconSize: [48, 48],
+    iconAnchor: [24, 48],
 });
 
 // Type definitions
@@ -141,11 +134,10 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
                 }
             );
         } else {
-            setSearchError('Geolocation is not supported by your browser. Please select on map.');
+            setSearchError('Geolocation is not supported by your browser.');
         }
     };
 
-    // Improved search using Nominatim with Tamil Nadu focus
     const handleSearch = async () => {
         if (!searchQuery.trim()) return;
         setSearching(true);
@@ -153,7 +145,6 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
         setSearchError('');
 
         try {
-            // Add "Tamil Nadu India" for better local results
             const query = `${searchQuery}, Tamil Nadu, India`;
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1`
@@ -170,27 +161,11 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
                 })));
                 setShowResults(true);
             } else {
-                // Try without Tamil Nadu if no results
-                const response2 = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=8&addressdetails=1`
-                );
-                const data2: NominatimResult[] = await response2.json();
-                if (data2 && data2.length > 0) {
-                    setSearchResults(data2.map((item: NominatimResult) => ({
-                        lat: parseFloat(item.lat),
-                        lng: parseFloat(item.lon),
-                        name: item.display_name,
-                        type: item.type,
-                        shortName: item.name || item.display_name.split(',')[0],
-                    })));
-                    setShowResults(true);
-                } else {
-                    setSearchError(`No results for "${searchQuery}". Try a different name or click on the map.`);
-                }
+                setSearchError(`No results for "${searchQuery}".`);
             }
         } catch (error) {
             console.error('Search error:', error);
-            setSearchError('Search failed. Please select location on the map instead.');
+            setSearchError('Search failed. Please try again or click map.');
         }
         setSearching(false);
     };
@@ -213,128 +188,113 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
             >
-                <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
                 <motion.div
-                    className="relative w-full max-w-4xl h-[85vh] bg-dark-800 rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden"
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="relative w-full max-w-4xl h-[85vh] bg-[#FDFBF7] rounded-3xl border border-[#E9ECEF] shadow-2xl flex flex-col overflow-hidden"
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between p-4 border-b border-white/10 bg-dark-900">
-                        <div>
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <MapPin className="w-5 h-5 text-red-400" />
-                                Select Stop Location
-                            </h2>
-                            <p className="text-xs text-dark-400 mt-0.5">Search, use GPS, or click on the map</p>
+                    <div className="flex items-center justify-between p-5 border-b border-[#E9ECEF] bg-white">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-[#D8F3DC] flex items-center justify-center">
+                                <MapPin className="w-6 h-6 text-[#2D6A4F]" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-[#1B4332]">Pick Location</h2>
+                                <p className="text-xs text-[#74796D] mt-0.5">Find and set a bus stop</p>
+                            </div>
                         </div>
-                        <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-dark-400 hover:text-white">
-                            <X className="w-5 h-5" />
+                        <button onClick={onClose} className="p-2.5 rounded-xl hover:bg-[#F8F9FA] text-[#74796D] hover:text-[#1B4332] transition-colors">
+                            <X className="w-6 h-6" />
                         </button>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="p-4 bg-dark-900 border-b border-white/10">
-                        <div className="flex gap-2">
+                    {/* Search & Actions */}
+                    <div className="p-5 bg-white border-b border-[#E9ECEF] space-y-4">
+                        <div className="flex flex-col md:flex-row gap-3">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#95A3A4]" />
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => { setSearchQuery(e.target.value); setSearchError(''); }}
                                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                                    placeholder="Type location name... (e.g., Ariyalur Bus Stand)"
-                                    className="w-full pl-10 pr-4 py-3 text-sm bg-dark-800 border border-dark-600 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-[#F8F9FA] border-2 border-[#E9ECEF] rounded-2xl text-[#1B4332] placeholder-[#95A3A4] focus:outline-none focus:border-[#2D6A4F] focus:bg-white transition"
                                 />
                             </div>
-                            <button
-                                onClick={handleSearch}
-                                disabled={searching || !searchQuery.trim()}
-                                className="px-6 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-dark-600 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium flex items-center gap-2 min-w-[110px] justify-center transition-colors"
-                            >
-                                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                                {searching ? 'Finding...' : 'Search'}
-                            </button>
-                            <button
-                                onClick={handleUseCurrentLocation}
-                                disabled={gettingLocation}
-                                className="px-4 py-3 bg-secondary-600 hover:bg-secondary-700 disabled:bg-dark-600 text-white rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-colors"
-                            >
-                                {gettingLocation ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <Navigation className="w-4 h-4" />
-                                )}
-                                {gettingLocation ? 'Getting...' : 'My Location'}
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleSearch}
+                                    disabled={searching || !searchQuery.trim()}
+                                    className="px-6 py-3.5 bg-[#2D6A4F] text-white rounded-2xl font-bold flex items-center gap-2 transition hover:bg-[#1B4332] disabled:opacity-50"
+                                >
+                                    {searching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                                    Search
+                                </button>
+                                <button
+                                    onClick={handleUseCurrentLocation}
+                                    disabled={gettingLocation}
+                                    className="px-6 py-3.5 bg-[#E8F4F8] text-[#457B9D] rounded-2xl font-bold flex items-center gap-2 transition hover:bg-[#D7E9F1] disabled:opacity-50"
+                                >
+                                    {gettingLocation ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
+                                    <span className="hidden sm:inline">My Location</span>
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Search Error - Inline */}
+                        {/* Search Results / Error */}
                         <AnimatePresence>
-                            {searchError && (
+                            {(searchError || (showResults && searchResults.length > 0)) && (
                                 <motion.div
-                                    className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2"
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="overflow-hidden"
                                 >
-                                    <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm text-amber-400">{searchError}</p>
-                                        <p className="text-xs text-amber-400/70 mt-1">💡 Tip: Click directly on the map to place a marker at any location</p>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Search Results Dropdown */}
-                        <AnimatePresence>
-                            {showResults && searchResults.length > 0 && (
-                                <motion.div
-                                    className="mt-3 bg-dark-700 border border-dark-600 rounded-xl overflow-hidden max-h-56 overflow-y-auto shadow-lg"
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                >
-                                    <div className="px-3 py-2 bg-dark-600 text-xs text-dark-300 font-medium sticky top-0 flex items-center gap-2">
-                                        <Check className="w-3 h-3" />
-                                        Found {searchResults.length} locations - Click to select:
-                                    </div>
-                                    {searchResults.map((result, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => selectSearchResult(result)}
-                                            className="w-full px-4 py-3 hover:bg-primary-500/20 text-left border-b border-dark-600/50 last:border-0 transition-colors group"
-                                        >
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-8 h-8 bg-red-500/20 rounded-lg flex items-center justify-center group-hover:bg-red-500/30 transition-colors">
-                                                    <MapPin className="w-4 h-4 text-red-400" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate group-hover:text-primary-300">{result.shortName}</p>
-                                                    <p className="text-xs text-dark-400 mt-0.5 line-clamp-2">{result.name}</p>
-                                                </div>
+                                    {searchError ? (
+                                        <div className="p-4 bg-[#FFF1E6] rounded-2xl border border-[#E07A5F]/20 flex items-center gap-3 text-[#E07A5F] text-sm">
+                                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                            {searchError}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-[#F8F9FA] rounded-2xl border border-[#E9ECEF] overflow-hidden">
+                                            <div className="px-4 py-2 bg-[#E9ECEF] text-[10px] font-bold text-[#74796D] uppercase tracking-wider">
+                                                Search Results
                                             </div>
-                                        </button>
-                                    ))}
+                                            <div className="max-h-56 overflow-y-auto">
+                                                {searchResults.map((result, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => selectSearchResult(result)}
+                                                        className="w-full p-4 text-left border-b border-[#E9ECEF] hover:bg-white transition flex items-center gap-4 group"
+                                                    >
+                                                        <div className="w-10 h-10 rounded-xl bg-[#FFF1E6] flex items-center justify-center group-hover:bg-[#E07A5F]/10 transition">
+                                                            <MapPin className="w-5 h-5 text-[#E07A5F]" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-bold text-[#1B4332] truncate">{result.shortName}</p>
+                                                            <p className="text-xs text-[#74796D] truncate">{result.name}</p>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
 
                     {/* Map */}
-                    <div className="flex-1 relative">
+                    <div className="flex-1 relative bg-[#E9ECEF]">
                         <MapContainer
                             center={selectedLat && selectedLng ? [selectedLat, selectedLng] : TN_CENTER}
-                            zoom={selectedLat ? 15 : 7}
+                            zoom={selectedLat ? 16 : 7}
                             className="h-full w-full"
-                            zoomControl={true}
                         >
-                            <TileLayer
-                                url={TILE_URL}
-                                attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                            />
+                            <TileLayer url={TILE_URL} attribution='&copy; CARTO' />
                             <MapClickHandler onLocationSelect={handleLocationSelect} />
                             {selectedLat && selectedLng && (
                                 <>
@@ -344,67 +304,47 @@ function LocationPickerModal({ isOpen, onClose, onSelect, initialLat, initialLng
                             )}
                         </MapContainer>
 
-                        {/* Instructions overlay */}
-                        {!selectedLat && !showResults && !searchError && (
-                            <motion.div
-                                className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-dark-900/95 backdrop-blur-sm px-5 py-3 rounded-xl text-sm text-white shadow-xl border border-white/10"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 bg-primary-500/20 rounded-lg flex items-center justify-center">
-                                        <MapPin className="w-4 h-4 text-primary-400" />
+                        {/* Status Overlays */}
+                        <div className="absolute top-4 left-4 right-4 flex justify-between pointer-events-none">
+                            {selectedLat && selectedLng ? (
+                                <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+                                    className="bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-[#2D6A4F]/20 flex items-center gap-2 pointer-events-auto">
+                                    <div className="w-7 h-7 bg-[#D8F3DC] rounded-full flex items-center justify-center">
+                                        <Check className="w-4 h-4 text-[#2D6A4F]" />
                                     </div>
-                                    <p>Click anywhere on the map to select location</p>
+                                    <span className="text-sm font-bold text-[#1B4332]">Stop Picked</span>
+                                </motion.div>
+                            ) : (
+                                <div className="bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-[#E9ECEF] flex items-center gap-2">
+                                    <div className="w-7 h-7 bg-[#FFF1E6] rounded-full flex items-center justify-center animate-pulse">
+                                        <MapPin className="w-4 h-4 text-[#E07A5F]" />
+                                    </div>
+                                    <span className="text-sm font-medium text-[#74796D]">Tap map to pick stop</span>
                                 </div>
-                            </motion.div>
-                        )}
-
-                        {/* Selected location indicator on map */}
-                        {selectedLat && selectedLng && (
-                            <motion.div
-                                className="absolute top-4 left-4 bg-green-500/90 backdrop-blur-sm px-4 py-2 rounded-xl text-sm text-white shadow-lg"
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Check className="w-4 h-4" />
-                                    <span>Location selected!</span>
-                                </div>
-                            </motion.div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
                     {/* Footer */}
-                    <div className="p-4 border-t border-white/10 bg-dark-900">
-                        <div className="flex items-center justify-between">
-                            <div className="text-sm">
-                                {selectedLat && selectedLng ? (
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex items-center gap-2 text-green-400">
-                                            <Check className="w-4 h-4" />
-                                            <span>Location Ready</span>
-                                        </div>
-                                        <code className="px-3 py-1.5 bg-dark-700 rounded-lg text-primary-400 text-xs font-mono">
-                                            {selectedLat.toFixed(6)}, {selectedLng.toFixed(6)}
-                                        </code>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 text-dark-400">
-                                        <AlertCircle className="w-4 h-4" />
-                                        <span>No location selected yet</span>
-                                    </div>
+                    <div className="p-5 border-t border-[#E9ECEF] bg-white">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="hidden sm:block">
+                                {selectedLat && selectedLng && (
+                                    <code className="text-[10px] font-mono bg-[#F8F9FA] px-3 py-1.5 rounded-lg border border-[#E9ECEF] text-[#74796D]">
+                                        {selectedLat.toFixed(6)}, {selectedLng.toFixed(6)}
+                                    </code>
                                 )}
                             </div>
-                            <div className="flex gap-3">
-                                <button onClick={onClose} className="btn-ghost px-5">Cancel</button>
+                            <div className="flex flex-1 sm:flex-none gap-3">
+                                <button onClick={onClose} className="flex-1 sm:px-8 py-3.5 bg-[#F8F9FA] text-[#74796D] font-bold rounded-2xl border-2 border-[#E9ECEF] hover:bg-[#E9ECEF] transition active:scale-95">
+                                    Cancel
+                                </button>
                                 <button
                                     onClick={handleConfirm}
                                     disabled={!selectedLat || !selectedLng}
-                                    className="btn-primary px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 sm:px-8 py-3.5 bg-gradient-to-r from-[#2D6A4F] to-[#40916C] text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition active:scale-95 disabled:opacity-50"
                                 >
-                                    <Check className="w-4 h-4" />
-                                    Use This Location
+                                    Confirm Stop Location
                                 </button>
                             </div>
                         </div>

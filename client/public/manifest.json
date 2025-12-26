@@ -1,17 +1,24 @@
 {
-    "name": "TrackX",
+    "name": "TrackX Platinum",
     "short_name": "TrackX",
-    "description": "Real-Time Bus Tracking System",
+    "description": "High-Grade Enterprise Bus Tracking System",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#0f172a",
-    "theme_color": "#6366f1",
+    "background_color": "#081C15",
+    "theme_color": "#1B4332",
     "orientation": "portrait-primary",
     "icons": [
         {
+            "src": "/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
             "src": "/favicon.svg",
             "sizes": "any",
-            "type": "image/svg+xml"
+            "type": "image/svg+xml",
+            "purpose": "maskable"
         }
     ]
 }

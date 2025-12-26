@@ -82,12 +82,25 @@ export async function login(email, password, userType = 'ADMIN') {
     let user;
 
     if (userType === 'ADMIN') {
-        user = await prisma.admin.findUnique({
-            where: { email },
+        user = await prisma.admin.findFirst({
+            where: {
+                email: { equals: email, mode: 'insensitive' }
+            },
+            include: {
+                organization: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                    },
+                },
+            },
         });
     } else if (userType === 'DRIVER') {
-        user = await prisma.driver.findUnique({
-            where: { email },
+        user = await prisma.driver.findFirst({
+            where: {
+                email: { equals: email, mode: 'insensitive' }
+            },
             include: {
                 bus: {
                     select: {
@@ -136,7 +149,7 @@ export async function login(email, password, userType = 'ADMIN') {
     const { password: _, ...userWithoutPassword } = user;
 
     return {
-        user: userWithoutPassword,
+        user: { ...userWithoutPassword, type: userType },
         ...tokens,
     };
 }
@@ -159,7 +172,7 @@ async function storeRefreshToken(token, userId, userType) {
 }
 
 /**
- * Refresh access token
+ * Refresh access token (with token rotation)
  * @param {string} refreshToken - Refresh token
  */
 export async function refreshAccessToken(refreshToken) {
@@ -167,30 +180,51 @@ export async function refreshAccessToken(refreshToken) {
         // Verify refresh token
         const decoded = jwt.verify(refreshToken, jwtConfig.refreshToken.secret);
 
-        // Check if token exists and is not revoked
-        const storedToken = await prisma.refreshToken.findUnique({
-            where: { token: refreshToken },
+        // Check if token exists and is not revoked in a transaction
+        return await prisma.$transaction(async (tx) => {
+            const storedToken = await tx.refreshToken.findUnique({
+                where: { token: refreshToken },
+            });
+
+            if (!storedToken || storedToken.isRevoked) {
+                // Potential reuse detected! Revoke all tokens for this user for safety
+                if (storedToken) {
+                    await tx.refreshToken.updateMany({
+                        where: { userId: decoded.userId },
+                        data: { isRevoked: true }
+                    });
+                }
+                throw new ApiError(401, 'Invalid or reused refresh token');
+            }
+
+            if (new Date() > storedToken.expiresAt) {
+                throw new ApiError(401, 'Refresh token expired');
+            }
+
+            // Revoke the old token
+            await tx.refreshToken.update({
+                where: { token: refreshToken },
+                data: { isRevoked: true },
+            });
+
+            // Generate new token pair
+            const tokens = generateTokenPair(decoded.userId, decoded.userType, decoded.email);
+
+            // Store new refresh token
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+
+            await tx.refreshToken.create({
+                data: {
+                    token: tokens.refreshToken,
+                    userId: decoded.userId,
+                    userType: decoded.userType,
+                    expiresAt,
+                },
+            });
+
+            return tokens;
         });
-
-        if (!storedToken || storedToken.isRevoked) {
-            throw new ApiError(401, 'Invalid refresh token');
-        }
-
-        if (new Date() > storedToken.expiresAt) {
-            throw new ApiError(401, 'Refresh token expired');
-        }
-
-        // Generate new access token
-        const accessToken = generateAccessToken({
-            userId: decoded.userId,
-            userType: decoded.userType,
-            email: decoded.email,
-        });
-
-        return {
-            accessToken,
-            expiresIn: parseExpiryToSeconds(jwtConfig.accessToken.expiresIn),
-        };
     } catch (error) {
         if (error instanceof ApiError) throw error;
         throw new ApiError(401, 'Invalid refresh token');
