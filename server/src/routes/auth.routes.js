@@ -88,7 +88,7 @@ router.get('/me', authenticate, async (req, res, next) => {
         const { prisma } = await import('../config/database.js');
 
         let user;
-        if (req.user.type === 'ADMIN') {
+        if (req.user.type === 'ADMIN' || req.user.type === 'SUPER_ADMIN') {
             user = await prisma.admin.findUnique({
                 where: { id: req.user.id },
                 select: {

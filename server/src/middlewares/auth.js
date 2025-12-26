@@ -35,7 +35,7 @@ export async function authenticate(req, res, next) {
         const decoded = jwt.verify(token, jwtConfig.accessToken.secret);
 
         // Fetch full user data with organization
-        if (decoded.userType === 'ADMIN') {
+        if (decoded.userType === 'ADMIN' || decoded.userType === 'SUPER_ADMIN') {
             const admin = await prisma.admin.findUnique({
                 where: { id: decoded.userId },
                 select: {
@@ -71,7 +71,7 @@ export async function authenticate(req, res, next) {
 
             req.user = {
                 id: admin.id,
-                type: 'ADMIN',
+                type: decoded.userType,
                 email: admin.email,
                 name: admin.name,
                 role: admin.role,
@@ -104,7 +104,7 @@ export async function authenticate(req, res, next) {
  * Require admin role
  */
 export function requireAdmin(req, res, next) {
-    if (req.user?.type !== 'ADMIN') {
+    if (req.user?.type !== 'ADMIN' && req.user?.type !== 'SUPER_ADMIN') {
         return next(new ApiError(403, 'Admin access required'));
     }
     next();

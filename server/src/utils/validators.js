@@ -14,7 +14,7 @@ import { z } from 'zod';
 export const loginSchema = z.object({
     email: z.string().email('Invalid email format'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
-    userType: z.enum(['ADMIN', 'DRIVER']).optional().default('ADMIN'),
+    userType: z.enum(['ADMIN', 'DRIVER', 'SUPER_ADMIN']).optional().default('ADMIN'),
 });
 
 export const refreshTokenSchema = z.object({
