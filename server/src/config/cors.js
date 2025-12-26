@@ -21,7 +21,8 @@ export const corsOptions = {
             // In development, allow all origins
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            console.warn(`❌ CORS Rejected: ${origin}`);
+            callback(new Error(`Not allowed by CORS: ${origin}`));
         }
     },
     credentials: true,

@@ -147,13 +147,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         userType: 'SUPER_ADMIN' | 'ADMIN' | 'DRIVER' = 'ADMIN'
     ): Promise<LoginResult> => {
         try {
-            // Map SUPER_ADMIN back to ADMIN for API compatibility
-            const apiUserType = userType === 'SUPER_ADMIN' ? 'ADMIN' : userType;
-
             const response = await api.post('/auth/login', {
                 email,
                 password,
-                userType: apiUserType,
+                userType,
             });
 
             const { user: userData, accessToken, refreshToken } = response.data.data;

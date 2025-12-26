@@ -261,6 +261,29 @@ router.get('/health', (req, res) => {
     });
 });
 
+/**
+ * GET /api/public/master-check
+ * DIAGNOSTIC ONLY: Verifies if root account and organization exist.
+ * No sensitive data returned.
+ */
+router.get('/master-check', async (req, res, next) => {
+    try {
+        const { prisma } = await import('../config/database.js');
+        const org = await prisma.organization.findUnique({ where: { code: 'TRACKX' } });
+        const admin = await prisma.admin.findUnique({ where: { email: 'root@trackx.com' } });
+
+        res.json({
+            success: true,
+            status: 'Diagnostic Report',
+            rootOrg: org ? 'FOUND ✅' : 'NOT FOUND ❌',
+            rootUser: admin ? 'FOUND ✅' : 'NOT FOUND ❌',
+            tip: !org || !admin ? 'Run "npx prisma db seed" in Render Shell' : 'Check CORS and VITE_API_URL settings'
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // ============================================
 // SMART ETA PREDICTION ENDPOINTS
 // ============================================

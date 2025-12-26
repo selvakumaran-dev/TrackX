@@ -42,6 +42,7 @@ function MasterAccess() {
                 setError(result.error || 'Authorization Failed: Protocol Denied');
             }
         } catch (err) {
+            console.error('Master Access Error:', err);
             setError('System Error: Communication Interrupted');
         } finally {
             setLoading(false);
