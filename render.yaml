@@ -27,7 +27,7 @@ services:
         sync: false # Set manually in Render dashboard
       - key: REDIS_URL
         sync: false # Set manually or use Render Redis
-      - key: JWT_SECRET
+      - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
