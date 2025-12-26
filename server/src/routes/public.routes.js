@@ -261,52 +261,6 @@ router.get('/health', (req, res) => {
     });
 });
 
-/**
- * GET /api/public/bus-inventory
- * DIAGNOSTIC ONLY: Lists all buses and their IDs for troubleshooting.
- */
-router.get('/bus-inventory', async (req, res, next) => {
-    try {
-        const { prisma } = await import('../config/database.js');
-        const buses = await prisma.bus.findMany({
-            include: { organization: { select: { name: true, code: true } } }
-        });
-
-        res.json({
-            success: true,
-            count: buses.length,
-            buses: buses.map(b => ({
-                id: b.id,
-                number: b.busNumber,
-                name: b.busName,
-                org: b.organization?.name || 'ORPHANED (No Organization) ⚠️',
-                orgId: b.organizationId,
-                isActive: b.isActive
-            }))
-        });
-    } catch (error) {
-        next(error);
-    }
-});
-/**
- * GET /api/public/emergency-purge
- * EMERGENCY ONLY: Deletes a bus by ID.
- */
-router.get('/emergency-purge', async (req, res, next) => {
-    try {
-        const { id, key } = req.query;
-        if (key !== 'PLATINUM_ROOT') return res.status(403).send('Denied');
-        if (!id) return res.status(400).send('ID required');
-
-        const { prisma } = await import('../config/database.js');
-        await prisma.bus.delete({ where: { id: String(id) } });
-
-        res.json({ success: true, message: `Bus ${id} purged from system.` });
-    } catch (error) {
-        next(error);
-    }
-});
-
 // ============================================
 // SMART ETA PREDICTION ENDPOINTS
 // ============================================
