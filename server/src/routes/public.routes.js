@@ -288,6 +288,24 @@ router.get('/bus-inventory', async (req, res, next) => {
         next(error);
     }
 });
+/**
+ * GET /api/public/emergency-purge
+ * EMERGENCY ONLY: Deletes a bus by ID.
+ */
+router.get('/emergency-purge', async (req, res, next) => {
+    try {
+        const { id, key } = req.query;
+        if (key !== 'PLATINUM_ROOT') return res.status(403).send('Denied');
+        if (!id) return res.status(400).send('ID required');
+
+        const { prisma } = await import('../config/database.js');
+        await prisma.bus.delete({ where: { id: String(id) } });
+
+        res.json({ success: true, message: `Bus ${id} purged from system.` });
+    } catch (error) {
+        next(error);
+    }
+});
 
 // ============================================
 // SMART ETA PREDICTION ENDPOINTS
