@@ -481,7 +481,6 @@ const TrackingPage: React.FC = () => {
                                                 value={query}
                                                 onChange={(e) => setQuery(e.target.value)}
                                                 className="flex-1 bg-transparent text-[#1B4332] outline-none text-sm min-w-0"
-                                                placeholder="e.g. SRM-TN"
                                             />
                                             <button
                                                 onClick={() => { setShowSearch(false); setQuery(''); }}
@@ -520,7 +519,7 @@ const TrackingPage: React.FC = () => {
                                     >
                                         <Search className="w-4 h-4 text-[#74796D] flex-shrink-0" />
                                         <span className="text-[#74796D] text-sm flex-1 text-left truncate">
-                                            {selectedBus || 'Search bus...'}
+                                            {selectedBus || 'Search'}
                                         </span>
                                         {selectedBus && <Bus className="w-4 h-4 text-[#2D6A4F] flex-shrink-0" />}
                                     </motion.button>

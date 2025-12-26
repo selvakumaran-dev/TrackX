@@ -81,7 +81,7 @@ export function generateTokenPair(userId, userType, email) {
 export async function login(email, password, userType = 'ADMIN') {
     let user;
 
-    if (userType === 'ADMIN') {
+    if (userType === 'ADMIN' || userType === 'SUPER_ADMIN') {
         user = await prisma.admin.findFirst({
             where: {
                 email: { equals: email, mode: 'insensitive' }
@@ -127,7 +127,7 @@ export async function login(email, password, userType = 'ADMIN') {
     }
 
     // Update last login
-    if (userType === 'ADMIN') {
+    if (userType === 'ADMIN' || userType === 'SUPER_ADMIN') {
         await prisma.admin.update({
             where: { id: user.id },
             data: { lastLoginAt: new Date() },
