@@ -262,22 +262,51 @@ router.get('/health', (req, res) => {
 });
 
 /**
- * GET /api/public/master-check
- * DIAGNOSTIC ONLY: Verifies if root account and organization exist.
- * No sensitive data returned.
+ * GET /api/public/emergency-ignite
+ * EMERGENCY ONLY: Seeds the root admin when Shell access is denied (Render Free Tier).
  */
-router.get('/master-check', async (req, res, next) => {
+router.get('/emergency-ignite', async (req, res, next) => {
     try {
+        if (req.query.key !== 'PLATINUM_ROOT') {
+            return res.status(403).json({ success: false, error: 'Unauthorized Protocol' });
+        }
+
         const { prisma } = await import('../config/database.js');
-        const org = await prisma.organization.findUnique({ where: { code: 'TRACKX' } });
-        const admin = await prisma.admin.findUnique({ where: { email: 'root@trackx.com' } });
+        const bcrypt = await import('bcryptjs');
+
+        // 1. Create Master Org
+        const masterOrg = await prisma.organization.upsert({
+            where: { code: 'TRACKX' },
+            update: {},
+            create: {
+                name: 'TrackX Global Infrastructure',
+                code: 'TRACKX',
+                slug: 'trackx-global',
+                city: 'HQ',
+                state: 'Tamil Nadu',
+                isActive: true,
+                isVerified: true
+            }
+        });
+
+        // 2. Create Super Admin
+        const hashedPassword = await bcrypt.default.hash('Admin@123', 10);
+        await prisma.admin.upsert({
+            where: { email: 'root@trackx.com' },
+            update: { role: 'SUPER_ADMIN' },
+            create: {
+                email: 'root@trackx.com',
+                password: hashedPassword,
+                name: 'TrackX System Admin',
+                role: 'SUPER_ADMIN',
+                organizationId: masterOrg.id
+            }
+        });
 
         res.json({
             success: true,
-            status: 'Diagnostic Report',
-            rootOrg: org ? 'FOUND ✅' : 'NOT FOUND ❌',
-            rootUser: admin ? 'FOUND ✅' : 'NOT FOUND ❌',
-            tip: !org || !admin ? 'Run "npx prisma db seed" in Render Shell' : 'Check CORS and VITE_API_URL settings'
+            message: '🚀 TrackX Platinum System Ignited Successfully',
+            next: 'Go to /master/access and login'
         });
     } catch (error) {
         next(error);
