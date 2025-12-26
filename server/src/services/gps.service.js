@@ -18,7 +18,15 @@ const OFFLINE_THRESHOLD = parseInt(process.env.GPS_OFFLINE_THRESHOLD_SECONDS) ||
  */
 export async function getGlobalStats() {
     const [totalBuses, activeLocations] = await Promise.all([
-        prisma.bus.count({ where: { isActive: true } }),
+        prisma.bus.count({
+            where: {
+                isActive: true,
+                organization: {
+                    isVerified: true,
+                    isActive: true
+                }
+            }
+        }),
         getAllBusLocations(),
     ]);
 

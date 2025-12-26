@@ -262,51 +262,27 @@ router.get('/health', (req, res) => {
 });
 
 /**
- * GET /api/public/emergency-ignite
- * EMERGENCY ONLY: Seeds the root admin when Shell access is denied (Render Free Tier).
+ * GET /api/public/bus-inventory
+ * DIAGNOSTIC ONLY: Lists all buses and their IDs for troubleshooting.
  */
-router.get('/emergency-ignite', async (req, res, next) => {
+router.get('/bus-inventory', async (req, res, next) => {
     try {
-        if (req.query.key !== 'PLATINUM_ROOT') {
-            return res.status(403).json({ success: false, error: 'Unauthorized Protocol' });
-        }
-
         const { prisma } = await import('../config/database.js');
-        const bcrypt = await import('bcryptjs');
-
-        // 1. Create Master Org
-        const masterOrg = await prisma.organization.upsert({
-            where: { code: 'TRACKX' },
-            update: {},
-            create: {
-                name: 'TrackX Global Infrastructure',
-                code: 'TRACKX',
-                slug: 'trackx-global',
-                city: 'HQ',
-                state: 'Tamil Nadu',
-                isActive: true,
-                isVerified: true
-            }
-        });
-
-        // 2. Create Super Admin
-        const hashedPassword = await bcrypt.default.hash('Admin@123', 10);
-        await prisma.admin.upsert({
-            where: { email: 'root@trackx.com' },
-            update: { role: 'SUPER_ADMIN' },
-            create: {
-                email: 'root@trackx.com',
-                password: hashedPassword,
-                name: 'TrackX System Admin',
-                role: 'SUPER_ADMIN',
-                organizationId: masterOrg.id
-            }
+        const buses = await prisma.bus.findMany({
+            include: { organization: { select: { name: true, code: true } } }
         });
 
         res.json({
             success: true,
-            message: '🚀 TrackX Platinum System Ignited Successfully',
-            next: 'Go to /master/access and login'
+            count: buses.length,
+            buses: buses.map(b => ({
+                id: b.id,
+                number: b.busNumber,
+                name: b.busName,
+                org: b.organization?.name || 'ORPHANED (No Organization) ⚠️',
+                orgId: b.organizationId,
+                isActive: b.isActive
+            }))
         });
     } catch (error) {
         next(error);
