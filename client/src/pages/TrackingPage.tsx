@@ -90,7 +90,7 @@ const HOUR_FACTORS: { [key: number]: number } = {
     20: 0.9, 21: 1.0, 22: 1.1, 23: 1.15,
 };
 
-const AVG_BUS_SPEED = 25; // Synchronized with backend BASE_SPEED
+const AVG_BUS_SPEED = 35; // Synchronized with backend BASE_SPEED
 
 const calcETA = (dist: number, speed: number): number => {
     const hour = new Date().getHours();
@@ -169,7 +169,7 @@ const TrackingPage: React.FC = () => {
 
 
     const lastSocketUpdateRef = useRef<number>(Date.now());
-    const OFFLINE_THRESHOLD_MS = 30000; // 30 seconds
+    const OFFLINE_THRESHOLD_MS = 60000; // 60 seconds
     useEffect(() => {
         if (!bus || !bus.isOnline) return;
         const checkOffline = () => {
