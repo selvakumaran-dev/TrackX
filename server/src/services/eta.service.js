@@ -42,7 +42,7 @@ const DAY_FACTORS = {
 };
 
 // Base average bus speed in km/h (when no historical data)
-const BASE_SPEED = 25;
+const BASE_SPEED = 35;
 
 // Cache for historical speed data
 const speedCache = new Map();
@@ -94,9 +94,9 @@ export async function predictETA(busId, busLat, busLon, destLat, destLon, curren
     let confidenceScore;
 
     if (currentSpeed > 5) {
-        // Bus is moving - weight current speed heavily
-        effectiveSpeed = currentSpeed * 0.6 + historicalSpeed * 0.4;
-        confidenceScore = 0.85;
+        // Bus is moving - weight current speed heavily for instant responsiveness
+        effectiveSpeed = currentSpeed * 0.85 + historicalSpeed * 0.15;
+        confidenceScore = 0.9;
     } else if (historicalSpeed > 0) {
         // Bus stopped - use historical data
         effectiveSpeed = historicalSpeed;

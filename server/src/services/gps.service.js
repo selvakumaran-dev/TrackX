@@ -83,8 +83,8 @@ export async function processGpsUpdate(data, bus, driverId = null, io = null) {
     await setBusLocation(bus.id, locationData);
     console.log(`📍 GPS Update: ${bus.busNumber} @ ${lat.toFixed(4)}, ${lon.toFixed(4)} (${speed} km/h)`);
 
-    // Save to database
-    await prisma.gpsLog.create({
+    // Save to database (in background for zero-latency socket updates)
+    prisma.gpsLog.create({
         data: {
             latitude: lat,
             longitude: lon,
@@ -97,7 +97,7 @@ export async function processGpsUpdate(data, bus, driverId = null, io = null) {
             busId: bus.id,
             driverId: driverId || bus.driver?.id || null,
         },
-    });
+    }).catch(err => console.error('📍 GPS Log Error:', err));
 
     // Broadcast to Socket.IO
     if (io) {
